@@ -58,6 +58,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit();
 }
 
+// إعدادات مسار Session
+$sessionPath = '/tmp/php_sessions';
+if (!file_exists($sessionPath)) {
+    @mkdir($sessionPath, 0777, true);
+    @chmod($sessionPath, 0777);
+}
+ini_set('session.save_path', $sessionPath);
+
+// تحديد اسم موحد للـ Session (يجب أن يكون قبل إعدادات الكوكي)
+session_name('SCHOOL_SESSION');
+
 // إعدادات Session محسّنة للإنتاج
 ini_set('session.use_cookies', '1');
 ini_set('session.use_only_cookies', '1');
@@ -71,16 +82,15 @@ ini_set('session.cookie_path', '/');
 ini_set('session.cache_limiter', 'nocache');
 ini_set('session.cache_expire', '180');
 
-// إعدادات مسار Session
-$sessionPath = '/tmp/php_sessions';
-if (!file_exists($sessionPath)) {
-    @mkdir($sessionPath, 0777, true);
-    @chmod($sessionPath, 0777);
+// تعيين cookie domain فقط في الإنتاج
+if ($isProduction && !empty($_SERVER['HTTP_HOST'])) {
+    $host = $_SERVER['HTTP_HOST'];
+    $cookieDomain = preg_replace('/:\d+$/', '', $host);
+    ini_set('session.cookie_domain', $cookieDomain);
 }
-ini_set('session.save_path', $sessionPath);
 
-// تحديد اسم موحد للـ Session
-session_name('SCHOOL_SESSION');
+// تعيين متغير عام لتجنب تحميل config.php عدة مرات
+$GLOBALS['config_loaded'] = true;
 
 function loadEnv($path = __DIR__ . '/../.env') {
     if (!file_exists($path)) {
@@ -211,13 +221,37 @@ class SupabaseClient {
     }
     
     /**
-     * Select records from a table
+     * Select records from a table with advanced filtering
+     * 
+     * @param string $table Table name
+     * @param string $columns Columns to select (default: '*')
+     * @param array $filters Filters in format ['column' => 'value'] or ['column' => ['operator' => 'value']]
+     * @param array $options Additional options: order, limit, offset
+     * @return array Results
      */
-    public function select($table, $columns = '*', $filters = []) {
+    public function select($table, $columns = '*', $filters = [], $options = []) {
         $endpoint = "/$table?select=$columns";
         
         foreach ($filters as $key => $value) {
-            $endpoint .= "&$key=eq.$value";
+            if (is_array($value)) {
+                foreach ($value as $op => $val) {
+                    $endpoint .= "&$key=$op.$val";
+                }
+            } else {
+                $endpoint .= "&$key=eq.$value";
+            }
+        }
+        
+        if (isset($options['order'])) {
+            $endpoint .= "&order=" . $options['order'];
+        }
+        
+        if (isset($options['limit'])) {
+            $endpoint .= "&limit=" . $options['limit'];
+        }
+        
+        if (isset($options['offset'])) {
+            $endpoint .= "&offset=" . $options['offset'];
         }
         
         return $this->request('GET', $endpoint);
