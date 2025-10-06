@@ -43,6 +43,7 @@ try {
             }
             
             try {
+                error_log("🔍 Attempting to query users table for: $username");
                 $users = $supabase->select('users', '*', ['username' => $username]);
                 error_log("📊 Database query result: " . (empty($users) ? "No user found" : "User found"));
 
@@ -115,11 +116,23 @@ try {
                     echo json_encode(['success' => false, 'error' => 'اسم المستخدم أو كلمة المرور غير صحيحة']);
                 }
             } catch (Exception $dbError) {
-                error_log("Database query error: " . $dbError->getMessage());
+                $errorMsg = $dbError->getMessage();
+                error_log("❌ Database query error: " . $errorMsg);
+                
+                $userErrorMsg = 'خطأ في الاتصال بقاعدة البيانات';
+                
+                if (strpos($errorMsg, 'permission denied') !== false || strpos($errorMsg, '403') !== false) {
+                    error_log("⚠️ IMPORTANT: This is a permission error. Please check:");
+                    error_log("1. In Render.com dashboard, verify SUPABASE_SERVICE_ROLE_KEY environment variable");
+                    error_log("2. Make sure it's the SERVICE ROLE key, not the ANON key");
+                    error_log("3. In Supabase dashboard, check RLS policies on the 'users' table");
+                    $userErrorMsg = 'خطأ في صلاحيات قاعدة البيانات. يرجى التحقق من إعدادات Supabase Service Role Key';
+                }
+                
                 http_response_code(500);
                 echo json_encode([
                     'success' => false,
-                    'error' => 'خطأ في الاتصال بقاعدة البيانات. تحقق من إعدادات Supabase'
+                    'error' => $userErrorMsg
                 ]);
                 exit;
             }
