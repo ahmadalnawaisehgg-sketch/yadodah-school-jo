@@ -3,11 +3,11 @@
  * نظام الشكاوى والاقتراحات
  */
 
+require __DIR__ . '/config.php';
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
-require __DIR__ . '/config.php';
 require __DIR__ . '/middleware.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
@@ -20,21 +20,18 @@ try {
         $type = $_GET['type'] ?? null;
         $priority = $_GET['priority'] ?? null;
         
-        $query = "SELECT * FROM complaints_suggestions WHERE 1=1";
-        
+        $filters = [];
         if ($status) {
-            $query .= " AND status = '$status'";
+            $filters['status'] = $status;
         }
         if ($type) {
-            $query .= " AND type = '$type'";
+            $filters['type'] = $type;
         }
         if ($priority) {
-            $query .= " AND priority = '$priority'";
+            $filters['priority'] = $priority;
         }
         
-        $query .= " ORDER BY created_at DESC";
-        
-        $items = $supabase->query($query);
+        $items = $supabase->select('complaints_suggestions', '*', $filters, ['order' => 'created_at.desc']);
         
         echo json_encode(['success' => true, 'data' => $items ?: []]);
         
