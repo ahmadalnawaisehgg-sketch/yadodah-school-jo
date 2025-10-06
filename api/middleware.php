@@ -1,6 +1,10 @@
 <?php
 
 function requireAuth() {
+    if (!isset($GLOBALS['config_loaded'])) {
+        require_once __DIR__ . '/config.php';
+    }
+    
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
@@ -31,6 +35,10 @@ function requireAuth() {
 }
 
 function requireRole($allowedRoles) {
+    if (!isset($GLOBALS['config_loaded'])) {
+        require_once __DIR__ . '/config.php';
+    }
+    
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
