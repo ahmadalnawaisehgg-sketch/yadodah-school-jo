@@ -169,18 +169,16 @@ class SupabaseClient {
         $headers = [
             'apikey: ' . $apiKey,
             'Authorization: Bearer ' . $apiKey,
-            'Content-Type: application/json'
+            'Content-Type: application/json',
+            'Prefer: return=representation'
         ];
-        
-        if ($returnData) {
-            $headers[] = 'Prefer: return=representation';
-        }
         
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
         
         if ($method === 'POST') {
             curl_setopt($ch, CURLOPT_POST, true);
@@ -207,13 +205,22 @@ class SupabaseClient {
         curl_close($ch);
         
         if ($error) {
-            error_log("❌ Supabase API Error: $error");
+            error_log("❌ Supabase cURL Error: $error");
             throw new Exception("API request failed: $error");
         }
         
         if ($httpCode >= 400) {
             $errorDetails = $response ? " - Details: $response" : "";
             error_log("❌ Supabase API HTTP Error $httpCode$errorDetails");
+            
+            if ($httpCode === 403) {
+                error_log("⚠️ Permission denied. Please check:");
+                error_log("1. SUPABASE_SERVICE_ROLE_KEY is set correctly (not ANON key)");
+                error_log("2. RLS policies in Supabase allow service role access");
+                error_log("3. The table exists in the public schema");
+                throw new Exception("Database permission denied. Please verify Supabase service role key is configured correctly.");
+            }
+            
             throw new Exception("API returned error: HTTP $httpCode");
         }
         
