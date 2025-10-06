@@ -58,6 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit();
 }
 
+// إعدادات مسار Session
 $sessionPath = sys_get_temp_dir() . '/php_sessions';
 if (!file_exists($sessionPath)) {
     @mkdir($sessionPath, 0755, true);
@@ -66,19 +67,20 @@ if (is_writable($sessionPath)) {
     ini_set('session.save_path', $sessionPath);
 }
 
+// تحديد اسم موحد للـ Session
+session_name('SCHOOL_GUIDANCE_SESSION');
+
+// إعدادات Session محسّنة
 ini_set('session.cookie_httponly', 1);
 ini_set('session.cookie_secure', $isProduction ? 1 : 0);
 ini_set('session.cookie_samesite', 'Lax');
 ini_set('session.use_strict_mode', 1);
 ini_set('session.gc_maxlifetime', 3600);
 ini_set('session.cookie_lifetime', 0);
+ini_set('session.cookie_path', '/');
 
-if ($isProduction && !empty($_SERVER['HTTP_HOST'])) {
-    $domain = $_SERVER['HTTP_HOST'];
-    if (strpos($domain, '.') !== false) {
-        ini_set('session.cookie_domain', $domain);
-    }
-}
+// عدم تعيين session.cookie_domain في Production لتجنب مشاكل الـ cookies
+// السماح للمتصفح بتحديد الـ domain تلقائياً
 
 function loadEnv($path = __DIR__ . '/../.env') {
     if (!file_exists($path)) {
