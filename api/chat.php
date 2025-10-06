@@ -3,11 +3,11 @@
  * نظام الشات بين المعلم وولي الأمر
  */
 
+require __DIR__ . '/config.php';
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
-require __DIR__ . '/config.php';
 require __DIR__ . '/middleware.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
@@ -22,22 +22,23 @@ try {
             if ($userType === 'parent') {
                 $parentId = $_SESSION['parent_id'] ?? 0;
                 
-                $conversations = $supabase->query("
-                    SELECT 
-                        c.*,
-                        t.name AS teacher_name,
-                        t.subject AS teacher_subject,
-                        s.name AS student_name,
-                        (SELECT COUNT(*) FROM chat_messages 
-                         WHERE conversation_id = c.id 
-                         AND sender_type = 'teacher' 
-                         AND is_read = FALSE) AS unread_count
-                    FROM conversations c
-                    JOIN teachers t ON c.teacher_id = t.id
-                    JOIN students s ON c.student_id = s.id
-                    WHERE c.parent_id = $parentId
-                    ORDER BY c.last_message_at DESC
-                ");
+                $conversations = $supabase->select('conversations', '*', ['parent_id' => $parentId], ['order' => 'last_message_at.desc']);
+                
+                foreach ($conversations as &$conv) {
+                    $teacher = $supabase->select('teachers', 'name,subject', ['id' => $conv['teacher_id']]);
+                    $conv['teacher_name'] = $teacher[0]['name'] ?? '';
+                    $conv['teacher_subject'] = $teacher[0]['subject'] ?? '';
+                    
+                    $student = $supabase->select('students', 'name', ['id' => $conv['student_id']]);
+                    $conv['student_name'] = $student[0]['name'] ?? '';
+                    
+                    $unreadMessages = $supabase->select('chat_messages', '*', [
+                        'conversation_id' => $conv['id'],
+                        'sender_type' => 'teacher',
+                        'is_read' => false
+                    ]);
+                    $conv['unread_count'] = count($unreadMessages);
+                }
                 
             } else {
                 $userId = $_SESSION['user_id'] ?? 0;
@@ -49,21 +50,22 @@ try {
                 }
                 $teacherId = $teacher[0]['id'];
                 
-                $conversations = $supabase->query("
-                    SELECT 
-                        c.*,
-                        p.full_name AS parent_name,
-                        s.name AS student_name,
-                        (SELECT COUNT(*) FROM chat_messages 
-                         WHERE conversation_id = c.id 
-                         AND sender_type = 'parent' 
-                         AND is_read = FALSE) AS unread_count
-                    FROM conversations c
-                    JOIN parents p ON c.parent_id = p.id
-                    JOIN students s ON c.student_id = s.id
-                    WHERE c.teacher_id = $teacherId
-                    ORDER BY c.last_message_at DESC
-                ");
+                $conversations = $supabase->select('conversations', '*', ['teacher_id' => $teacherId], ['order' => 'last_message_at.desc']);
+                
+                foreach ($conversations as &$conv) {
+                    $parent = $supabase->select('parents', 'full_name', ['id' => $conv['parent_id']]);
+                    $conv['parent_name'] = $parent[0]['full_name'] ?? '';
+                    
+                    $student = $supabase->select('students', 'name', ['id' => $conv['student_id']]);
+                    $conv['student_name'] = $student[0]['name'] ?? '';
+                    
+                    $unreadMessages = $supabase->select('chat_messages', '*', [
+                        'conversation_id' => $conv['id'],
+                        'sender_type' => 'parent',
+                        'is_read' => false
+                    ]);
+                    $conv['unread_count'] = count($unreadMessages);
+                }
             }
             
             echo json_encode(['success' => true, 'conversations' => $conversations ?: []]);
@@ -79,18 +81,23 @@ try {
             
             $messages = $supabase->select('chat_messages', '*', [
                 'conversation_id' => $conversationId
-            ], 'created_at.asc');
+            ], ['order' => 'created_at.asc']);
             
             $userType = $_SESSION['user_type'] ?? 'staff';
             $senderType = $userType === 'parent' ? 'teacher' : 'parent';
             
-            $supabase->query("
-                UPDATE chat_messages 
-                SET is_read = TRUE, read_at = CURRENT_TIMESTAMP
-                WHERE conversation_id = $conversationId
-                AND sender_type = '$senderType'
-                AND is_read = FALSE
-            ");
+            $unreadMessages = $supabase->select('chat_messages', '*', [
+                'conversation_id' => $conversationId,
+                'sender_type' => $senderType,
+                'is_read' => false
+            ]);
+            
+            foreach ($unreadMessages as $msg) {
+                $supabase->update('chat_messages', [
+                    'is_read' => true,
+                    'read_at' => date('Y-m-d H:i:s')
+                ], ['id' => $msg['id']], false);
+            }
             
             echo json_encode(['success' => true, 'messages' => $messages ?: []]);
         }
