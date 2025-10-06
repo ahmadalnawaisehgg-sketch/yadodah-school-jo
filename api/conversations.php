@@ -4,7 +4,9 @@
  * يدعم المحادثات بين أولياء الأمور والمسؤولين
  */
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 require __DIR__ . '/config.php';
 require __DIR__ . '/middleware.php';
