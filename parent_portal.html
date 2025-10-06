@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="بوابة أولياء الأمور - نظام الإرشاد المدرسي">
+  <title>بوابة أولياء الأمور</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="styles/parent-style.css">
+</head>
+<body>
+
+<!-- شاشة تسجيل الدخول -->
+<div id="parent-login-screen">
+  <div class="parent-login-card">
+    <div class="login-header">
+      <img src="https://apps.moe.gov.jo/qrc/LearnSupport/public/assets/images/logo/moe_logo.png" alt="شعار الوزارة">
+      <h4>بوابة أولياء الأمور</h4>
+      <p class="text-muted">نظام الإرشاد المدرسي</p>
+    </div>
+    <div class="login-body">
+      <div class="form-group mb-3">
+        <label class="form-label"><i class="fas fa-envelope"></i> البريد الإلكتروني</label>
+        <input id="parentEmail" type="email" class="form-control" placeholder="البريد الإلكتروني المسجل في المدرسة" />
+        <small class="text-muted">أدخل البريد الإلكتروني المسجل كولي أمر</small>
+      </div>
+      <div id="parentLoginMsg" class="alert" style="display:none"></div>
+      <button class="btn btn-primary w-100 btn-lg" onclick="parentLogin()">
+        <i class="fas fa-sign-in-alt"></i> دخول
+      </button>
+      <div class="login-footer">
+        <p class="text-muted">
+          <i class="fas fa-info-circle"></i>
+          تسجيل الدخول بالإيميل المسجل فقط
+        </p>
+        <a href="index.html" class="text-primary">
+          <i class="fas fa-arrow-left"></i> العودة لصفحة المسؤولين
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- منطقة الإشعارات -->
+<div id="notificationArea"></div>
+
+<!-- الشريط العلوي -->
+<nav class="parent-navbar" id="parentNavbar" style="display:none">
+  <div class="navbar-content">
+    <div class="navbar-brand">
+      <img src="https://apps.moe.gov.jo/qrc/LearnSupport/public/assets/images/logo/moe_logo.png" alt="شعار">
+      <div>
+        <span class="brand-title">بوابة أولياء الأمور</span>
+        <small class="brand-subtitle">نظام الإرشاد المدرسي</small>
+      </div>
+    </div>
+    <div class="navbar-controls">
+      <button class="btn btn-icon" onclick="refreshData()" title="تحديث">
+        <i class="fas fa-sync-alt"></i>
+      </button>
+      <button class="btn btn-icon position-relative" onclick="openSection('messages')">
+        <i class="fas fa-envelope"></i>
+        <span class="badge-notification" id="unreadBadge" style="display:none">0</span>
+      </button>
+      <button class="theme-toggle" id="parentThemeToggle" title="تبديل الوضع">
+        <i class="fas fa-moon"></i>
+      </button>
+      <div class="user-info">
+        <div class="user-avatar"><i class="fas fa-user"></i></div>
+        <div>
+          <span id="parentUserName">ولي الأمر</span>
+          <small id="parentStudentsCount">0 طالب</small>
+        </div>
+      </div>
+      <button class="btn btn-icon" onclick="parentLogout()" title="تسجيل الخروج">
+        <i class="fas fa-sign-out-alt"></i>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- المحتوى الرئيسي -->
+<div class="parent-container" id="parentContainer" style="display:none">
+  
+  <!-- القائمة الجانبية -->
+  <aside class="parent-sidebar">
+    <div class="sidebar-menu">
+      <button class="menu-item active" onclick="openParentSection('dashboard')">
+        <i class="fas fa-home"></i>
+        <span>الرئيسية</span>
+      </button>
+      <button class="menu-item" onclick="openParentSection('students')">
+        <i class="fas fa-users"></i>
+        <span>أبنائي</span>
+      </button>
+      <button class="menu-item" onclick="openParentSection('messages')">
+        <i class="fas fa-comments"></i>
+        <span>الرسائل</span>
+        <span class="badge-count" id="messagesBadge" style="display:none">0</span>
+      </button>
+      <button class="menu-item" onclick="openParentSection('meetings')">
+        <i class="fas fa-calendar-alt"></i>
+        <span>المواعيد</span>
+      </button>
+      <button class="menu-item" onclick="openParentSection('violations')">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span>المخالفات</span>
+      </button>
+      <button class="menu-item" onclick="openParentSection('profile')">
+        <i class="fas fa-user-cog"></i>
+        <span>الملف الشخصي</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- المحتوى -->
+  <main class="parent-content">
+    
+    <!-- قسم الرئيسية -->
+    <section id="parent-dashboard" class="parent-section">
+      <div class="section-header">
+        <h3><i class="fas fa-home"></i> الرئيسية</h3>
+        <p class="text-muted">نظرة عامة على أبنائك</p>
+      </div>
+
+      <div class="students-cards" id="studentsCards">
+        <!-- سيتم ملؤها ديناميكياً -->
+      </div>
+
+      <div class="row mt-4">
+        <div class="col-md-6">
+          <div class="card-panel">
+            <h5><i class="fas fa-calendar-check"></i> المواعيد القادمة</h5>
+            <div id="upcomingMeetingsList">
+              <div class="text-center text-muted py-4">
+                <i class="fas fa-calendar-alt fa-3x mb-3"></i>
+                <p>لا توجد مواعيد قادمة</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card-panel">
+            <h5><i class="fas fa-bell"></i> آخر الإشعارات</h5>
+            <div id="recentNotifications">
+              <div class="text-center text-muted py-4">
+                <i class="fas fa-bell fa-3x mb-3"></i>
+                <p>لا توجد إشعارات جديدة</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- قسم أبنائي -->
+    <section id="parent-students" class="parent-section" style="display:none">
+      <div class="section-header">
+        <h3><i class="fas fa-users"></i> أبنائي</h3>
+        <p class="text-muted">معلومات تفصيلية عن الطلاب</p>
+      </div>
+
+      <div id="studentsDetailsList">
+        <!-- سيتم ملؤها ديناميكياً -->
+      </div>
+    </section>
+
+    <!-- قسم الرسائل -->
+    <section id="parent-messages" class="parent-section" style="display:none">
+      <div class="section-header">
+        <h3><i class="fas fa-comments"></i> الرسائل</h3>
+        <button class="btn btn-primary" onclick="startNewConversation()">
+          <i class="fas fa-plus"></i> رسالة جديدة
+        </button>
+      </div>
+
+      <div class="messages-container">
+        <div class="conversations-list" id="conversationsList">
+          <div class="text-center text-muted py-5">
+            <i class="fas fa-comments fa-3x mb-3"></i>
+            <p>لا توجد محادثات</p>
+          </div>
+        </div>
+        <div class="messages-chat" id="messagesChat">
+          <div class="empty-chat">
+            <i class="fas fa-comment-dots fa-4x mb-3"></i>
+            <h5>اختر محادثة لعرض الرسائل</h5>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- قسم المواعيد -->
+    <section id="parent-meetings" class="parent-section" style="display:none">
+      <div class="section-header">
+        <h3><i class="fas fa-calendar-alt"></i> المواعيد</h3>
+        <button class="btn btn-success" onclick="requestNewMeeting()">
+          <i class="fas fa-plus"></i> طلب موعد جديد
+        </button>
+      </div>
+
+      <div class="tabs-container mb-4">
+        <button class="tab-btn active" onclick="showMeetingTab('upcoming')">
+          <i class="fas fa-clock"></i> القادمة
+        </button>
+        <button class="tab-btn" onclick="showMeetingTab('past')">
+          <i class="fas fa-history"></i> السابقة
+        </button>
+        <button class="tab-btn" onclick="showMeetingTab('requests')">
+          <i class="fas fa-paper-plane"></i> طلباتي
+        </button>
+      </div>
+
+      <div id="meetingsContent">
+        <div id="upcomingMeetings" class="meetings-list">
+          <!-- سيتم ملؤها -->
+        </div>
+        <div id="pastMeetings" class="meetings-list" style="display:none">
+          <!-- سيتم ملؤها -->
+        </div>
+        <div id="meetingRequests" class="meetings-list" style="display:none">
+          <!-- سيتم ملؤها -->
+        </div>
+      </div>
+    </section>
+
+    <!-- قسم المخالفات -->
+    <section id="parent-violations" class="parent-section" style="display:none">
+      <div class="section-header">
+        <h3><i class="fas fa-exclamation-triangle"></i> المخالفات</h3>
+        <p class="text-muted">سجل المخالفات لجميع الأبناء</p>
+      </div>
+
+      <div class="filter-section mb-4">
+        <select id="violationStudentFilter" class="form-select" onchange="filterViolations()">
+          <option value="">جميع الأبناء</option>
+        </select>
+        <select id="violationSeverityFilter" class="form-select" onchange="filterViolations()">
+          <option value="">جميع الدرجات</option>
+          <option value="بسيطة">بسيطة</option>
+          <option value="متوسطة">متوسطة</option>
+          <option value="خطيرة">خطيرة</option>
+        </select>
+      </div>
+
+      <div id="violationsList" class="violations-list">
+        <!-- سيتم ملؤها -->
+      </div>
+    </section>
+
+    <!-- قسم الملف الشخصي -->
+    <section id="parent-profile" class="parent-section" style="display:none">
+      <div class="section-header">
+        <h3><i class="fas fa-user-cog"></i> الملف الشخصي</h3>
+        <p class="text-muted">معلوماتك الشخصية والإعدادات</p>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6">
+          <div class="card-panel">
+            <h5><i class="fas fa-user"></i> المعلومات الشخصية</h5>
+            <div id="profileInfo">
+              <!-- سيتم ملؤها -->
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card-panel">
+            <h5><i class="fas fa-bell"></i> إعدادات الإشعارات</h5>
+            <div class="notification-settings">
+              <div class="setting-item">
+                <label class="form-check-label">
+                  <input type="checkbox" class="form-check-input" checked>
+                  إشعارات المخالفات
+                </label>
+              </div>
+              <div class="setting-item">
+                <label class="form-check-label">
+                  <input type="checkbox" class="form-check-input" checked>
+                  تذكير المواعيد
+                </label>
+              </div>
+              <div class="setting-item">
+                <label class="form-check-label">
+                  <input type="checkbox" class="form-check-input" checked>
+                  الرسائل الجديدة
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Modal طلب موعد -->
+<div class="modal fade" id="requestMeetingModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-calendar-plus"></i> طلب موعد جديد</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">الطالب</label>
+          <select id="meetingStudentSelect" class="form-select"></select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">التاريخ المفضل</label>
+          <input type="date" id="meetingDate" class="form-control">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">الوقت المفضل</label>
+          <input type="time" id="meetingTime" class="form-control">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">الموضوع <span class="text-danger">*</span></label>
+          <input type="text" id="meetingTopic" class="form-control" placeholder="موضوع المقابلة">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">التفاصيل</label>
+          <textarea id="meetingReason" class="form-control" rows="3" placeholder="اكتب تفاصيل الموضوع (اختياري)"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+        <button type="button" class="btn btn-primary" onclick="submitMeetingRequest()">
+          <i class="fas fa-paper-plane"></i> إرسال الطلب
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal رسالة جديدة -->
+<div class="modal fade" id="newMessageModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-envelope"></i> رسالة جديدة</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">إلى</label>
+          <select id="messageRecipient" class="form-select">
+            <option value="1">المرشد التربوي</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">الموضوع</label>
+          <input type="text" id="messageSubject" class="form-control" placeholder="موضوع الرسالة">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">الرسالة <span class="text-danger">*</span></label>
+          <textarea id="messageContent" class="form-control" rows="5" placeholder="اكتب رسالتك هنا..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+        <button type="button" class="btn btn-primary" onclick="sendNewMessage()">
+          <i class="fas fa-paper-plane"></i> إرسال
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="scripts/parent-portal.js"></script>
+
+</body>
+</html>

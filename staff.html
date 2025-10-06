@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="نظام الإرشاد المدرسي - إدارة شاملة للطلاب والمخالفات والتوجيه الجمعي">
+  <meta name="author" content="نظام الإرشاد المدرسي">
+  <title>نظام الإرشاد المدرسي</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <link rel="stylesheet" href="styles/index-style.css">
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-card">
+    <img src="https://apps.moe.gov.jo/qrc/LearnSupport/public/assets/images/logo/moe_logo.png" alt="شعار الوزارة">
+    <h4 class="mb-2">نظام الإرشاد المدرسي</h4>
+    <input id="loginUser" class="form-control mb-2" placeholder="اسم المستخدم" />
+    <input id="loginPass" type="password" class="form-control mb-2" placeholder="كلمة المرور" />
+    <div id="loginMsg" style="color:var(--danger);min-height:18px;margin-bottom:8px"></div>
+    <button class="btn btn-primary w-100 mb-2" onclick="login()">
+      <i class="fas fa-sign-in-alt"></i> دخول
+    </button>
+    <div class="text-muted" style="font-size:0.9rem">افتراضي: اسم المستخدم <b>admin</b> — كلمة المرور <b>123</b></div>
+  </div>
+</div>
+
+<div id="notificationArea"></div>
+
+<nav class="top-navbar">
+  <div class="navbar-content">
+    <div class="navbar-brand">
+      <img src="https://apps.moe.gov.jo/qrc/LearnSupport/public/assets/images/logo/moe_logo.png" alt="شعار الوزارة">
+      <span>نظام الإرشاد</span>
+    </div>
+    <div class="navbar-controls">
+      <button class="theme-toggle" id="themeToggle" title="تبديل الوضع">
+        <i class="fas fa-moon"></i>
+        <span class="theme-toggle-text">الوضع الليلي</span>
+      </button>
+      <div class="user-info">
+        <div class="user-avatar">A</div>
+        <span>مدير النظام</span>
+      </div>
+      <div class="hamburger-menu" id="hamburgerMenu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="overlay" id="overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+  <img src="https://apps.moe.gov.jo/qrc/LearnSupport/public/assets/images/logo/moe_logo.png" alt="شعار">
+  <div class="menu-title">نظام الإرشاد</div>
+  <div class="menu-btn active" onclick="openSection('dashboard')">
+    <i class="fas fa-chart-line"></i>
+    <span>لوحة القيادة</span>
+  </div>
+  <div class="menu-btn" onclick="openSection('students')">
+    <i class="fas fa-user-graduate"></i>
+    <span>الطلاب</span>
+  </div>
+  <div class="menu-btn" onclick="openSection('violations')">
+    <i class="fas fa-exclamation-triangle"></i>
+    <span>المخالفات</span>
+  </div>
+  <div class="menu-btn" onclick="openSection('guidance')">
+    <i class="fas fa-users"></i>
+    <span>التوجيه الجمعي</span>
+  </div>
+  <div class="menu-btn" onclick="openSection('meetings')">
+    <i class="fas fa-school"></i>
+    <span>الاجتماعات</span>
+  </div>
+  <div class="menu-btn" onclick="openSection('parents')">
+    <i class="fas fa-handshake"></i>
+    <span>مقابلات أولياء الأمور</span>
+  </div>
+  <div class="menu-btn" onclick="openSection('teachers')">
+    <i class="fas fa-chalkboard-teacher"></i>
+    <span>المعلمون</span>
+  </div>
+  <div class="menu-btn" onclick="logout()">
+    <i class="fas fa-sign-out-alt"></i>
+    <span>تسجيل خروج</span>
+  </div>
+</aside>
+
+<main class="content" id="content">
+
+  <section id="section-dashboard" style="display:none">
+    <div class="section-title">
+      <div>
+        <i class="fas fa-chart-line"></i>
+        <h4>لوحة القيادة</h4>
+      </div>
+      <div class="action-buttons">
+        <button class="btn btn-primary" onclick="refreshDashboard()">
+          <i class="fas fa-sync-alt"></i> تحديث البيانات
+        </button>
+        <button class="btn btn-info" onclick="exportDashboard()">
+          <i class="fas fa-download"></i> تصدير التقرير
+        </button>
+      </div>
+    </div>
+    
+    <div class="stats-container">
+      <div class="stat-card">
+        <i class="fas fa-user-graduate fa-2x" style="color: var(--primary);"></i>
+        <div class="stat-value" id="statStudents">0</div>
+        <div class="stat-label">إجمالي الطلاب</div>
+      </div>
+      <div class="stat-card">
+        <i class="fas fa-exclamation-triangle fa-2x" style="color: var(--danger);"></i>
+        <div class="stat-value" id="statViolations">0</div>
+        <div class="stat-label">إجمالي المخالفات</div>
+      </div>
+      <div class="stat-card">
+        <i class="fas fa-users fa-2x" style="color: var(--success);"></i>
+        <div class="stat-value" id="statGuidance">0</div>
+        <div class="stat-label">جلسات التوجيه</div>
+      </div>
+      <div class="stat-card">
+        <i class="fas fa-school fa-2x" style="color: var(--warning);"></i>
+        <div class="stat-value" id="statMeetings">0</div>
+        <div class="stat-label">الاجتماعات</div>
+      </div>
+    </div>
+
+    <div class="dash-grid">
+      <div class="dash-card dash-students" onclick="openSection('students')">
+        <div>إجمالي الطلاب</div>
+        <h2 id="statStudentsCard">0</h2>
+        <small>الطلاب المسجلون في النظام</small>
+      </div>
+      <div class="dash-card dash-viol" onclick="openSection('violations')">
+        <div>إجمالي المخالفات</div>
+        <h2 id="statViolationsCard">0</h2>
+        <small>المخالفات المسجلة</small>
+      </div>
+      <div class="dash-card dash-guidance" onclick="openSection('guidance')">
+        <div>جلسات التوجيه</div>
+        <h2 id="statGuidanceCard">0</h2>
+        <small>التوجيه الجمعي المحفوظ</small>
+      </div>
+      <div class="dash-card dash-meet" onclick="openSection('meetings')">
+        <div>الاجتماعات</div>
+        <h2 id="statMeetingsCard">0</h2>
+        <small>اجتماعات الهيئة التدريسية</small>
+      </div>
+      <div class="dash-card dash-parents" onclick="openSection('parents')">
+        <div>مقابلات أولياء الأمور</div>
+        <h2 id="statParentsCard">0</h2>
+        <small>سجلات المقابلات</small>
+      </div>
+      <div class="dash-card dash-teachers" onclick="openSection('teachers')">
+        <div>المعلمون</div>
+        <h2 id="statTeachersCard">0</h2>
+        <small>المعلمون المسجلون</small>
+      </div>
+    </div>
+
+    <div class="row mt-4">
+      <div class="col-md-6">
+        <div class="card-panel">
+          <h5>توزيع الطلاب حسب الصفوف</h5>
+          <div class="chart-container">
+            <canvas id="studentsByGradeChart"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card-panel">
+          <h5>المخالفات خلال الشهر</h5>
+          <div class="chart-container">
+            <canvas id="violationsByMonthChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-panel mt-4">
+      <h5>آخر النشاطات</h5>
+      <div id="recentActivities" class="mt-3">
+      </div>
+    </div>
+  </section>
+
+  <section id="section-students" style="display:none">
+    <div class="section-title">
+      <div>
+        <i class="fas fa-user-graduate"></i>
+        <h4>إدارة الطلاب</h4>
+      </div>
+      <div class="action-buttons">
+        <button class="btn btn-primary" onclick="printAllStudents()">
+          <i class="fas fa-print"></i> طباعة الكل
+        </button>
+        <button class="btn btn-success" onclick="exportStudentsToExcel()">
+          <i class="fas fa-file-excel"></i> تصدير Excel
+        </button>
+        <button class="btn btn-info" onclick="showStudentStats()">
+          <i class="fas fa-chart-bar"></i> إحصائيات
+        </button>
+      </div>
+    </div>
+    
+    <div class="filter-section">
+      <h6>تصفية البيانات</h6>
+      <div class="filter-row">
+        <div class="form-group">
+          <label>الصف</label>
+          <select id="filterGradeS" class="form-select" onchange="renderStudentsTable()">
+            <option value="">كل الصفوف</option>
+            <option>الحادي عشر الأكاديمي أ</option>
+            <option>الحادي عشر الأكاديمي ب</option>
+            <option>الحادي عشر الأكاديمي ج</option>
+            <option>الثاني عشر صحي</option>
+            <option>الثاني عشر علوم وتكنولوجيا</option>
+            <option>الثاني عشر القانون والعلوم الشرعية واللغات</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>البحث</label>
+          <input id="studentsSearch" class="form-control search-input" placeholder="بحث باسم..." oninput="renderStudentsTable()" />
+        </div>
+        <div class="form-group">
+          <button class="btn btn-secondary w-100" onclick="clearStudentFilters()">
+            <i class="fas fa-times"></i> مسح الفلتر
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <h5>إضافة / تعديل طالب</h5>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label>اسم الطالب <span class="text-danger">*</span></label>
+          <input id="stu_name" class="form-control" placeholder="الاسم الثلاثي" />
+        </div>
+        <div class="col-md-3">
+          <label>الرقم الوطني</label>
+          <input id="stu_national_id" class="form-control" placeholder="الرقم الوطني" maxlength="20" />
+        </div>
+        <div class="col-md-3">
+          <label>البريد الإلكتروني للطالب</label>
+          <input id="stu_email" type="email" class="form-control" placeholder="student@example.com" />
+        </div>
+        
+        <div class="col-md-3">
+          <label>ولي الأمر</label>
+          <input id="stu_guardian" class="form-control" placeholder="اسم ولي الأمر" />
+        </div>
+        <div class="col-md-3">
+          <label>البريد الإلكتروني لولي الأمر</label>
+          <input id="stu_guardian_email" type="email" class="form-control" placeholder="guardian@example.com" />
+        </div>
+        <div class="col-md-3">
+          <label>هاتف ولي الأمر</label>
+          <input id="stu_guardian_phone" class="form-control" placeholder="079xxxxxxx" maxlength="15" />
+        </div>
+        <div class="col-md-3">
+          <label>هاتف الطالب</label>
+          <input id="stu_phone" class="form-control" placeholder="079xxxxxxx" maxlength="15" />
+        </div>
+        
+        <div class="col-md-3">
+          <label>الصف</label>
+          <select id="stu_grade" class="form-select">
+            <option value="">اختر الصف</option>
+            <option>الحادي عشر الأكاديمي</option>
+            <option>الثاني عشر الأكاديمي</option>
+            <option>الحادي عشر صحي</option>
+            <option>الثاني عشر صحي</option>
+            <option>الحادي عشر علوم وتكنولوجيا</option>
+            <option>الثاني عشر علوم وتكنولوجيا</option>
+            <option>الثاني عشر القانون والعلوم الشرعية واللغات</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label>الشعبة</label>
+          <select id="stu_section" class="form-select">
+            <option value="">اختر</option>
+            <option>أ</option>
+            <option>ب</option>
+            <option>ج</option>
+            <option>د</option>
+          </select>
+        </div>
+        <div class="col-md-5">
+          <label>العنوان</label>
+          <input id="stu_address" class="form-control" placeholder="عنوان السكن" />
+        </div>
+        <div class="col-md-2">
+          <button id="stuSaveBtn" class="btn btn-success w-100" onclick="saveStudent()">
+            <i class="fas fa-save"></i> حفظ
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="table table-striped table-bordered" id="studentsTable">
+        <thead>
+          <tr>
+            <th>الاسم</th>
+            <th>الرقم الوطني</th>
+            <th>البريد الإلكتروني</th>
+            <th>ولي الأمر</th>
+            <th>الصف</th>
+            <th>الشعبة</th>
+            <th>الهاتف</th>
+            <th>خيارات</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- VIOLATIONS -->
+  <section id="section-violations" style="display:none">
+    <div class="section-title">
+      <div>
+        <i class="fas fa-exclamation-triangle"></i>
+        <h4>إدارة المخالفات</h4>
+      </div>
+      <div class="action-buttons">
+        <button class="btn btn-primary" onclick="printAllViolations()">
+          <i class="fas fa-print"></i> طباعة الكل
+        </button>
+        <button class="btn btn-success" onclick="exportViolationsToExcel()">
+          <i class="fas fa-file-excel"></i> تصدير Excel
+        </button>
+        <button class="btn btn-info" onclick="showViolationStats()">
+          <i class="fas fa-chart-bar"></i> إحصائيات
+        </button>
+      </div>
+    </div>
+    
+    <div class="filter-section">
+      <h6>تصفية البيانات</h6>
+      <div class="filter-row">
+        <div class="form-group">
+          <label>الصف</label>
+          <select id="violFilterGrade" class="form-select" onchange="renderViolationsTable()">
+            <option value="">كل الصفوف</option>
+            <option>الحادي عشر الأكاديمي أ</option>
+            <option>الحادي عشر الأكاديمي ب</option>
+            <option>الحادي عشر الأكاديمي ج</option>
+            <option>الثاني عشر صحي</option>
+            <option>الثاني عشر علوم وتكنولوجيا</option>
+            <option>الثاني عشر القانون والعلوم الشرعية واللغات</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>البحث</label>
+          <input id="violationsSearch" class="form-control search-input" placeholder="بحث..." oninput="renderViolationsTable()" />
+        </div>
+        <div class="form-group">
+          <button class="btn btn-secondary w-100" onclick="clearViolationFilters()">
+            <i class="fas fa-times"></i> مسح الفلتر
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <h5>إضافة / تعديل مخالفة</h5>
+      <div class="row g-2 align-items-end">
+        <div class="col-md-5">
+          <label>اختر طالب (ابدأ بالكتابة)</label>
+          <input id="viol_student" list="studentsDatalist" class="form-control" placeholder="الاسم">
+          <datalist id="studentsDatalist"></datalist>
+        </div>
+        <div class="col-md-3">
+          <label>نوع المخالفة</label>
+          <input id="viol_type" class="form-control" />
+        </div>
+        <div class="col-md-2">
+          <label>التاريخ</label>
+          <input id="viol_date" type="date" class="form-control" />
+        </div>
+        <div class="col-md-2">
+          <button id="violSaveBtn" class="btn btn-danger w-100" onclick="saveViolation()">
+            <i class="fas fa-save"></i> حفظ
+          </button>
+        </div>
+      </div>
+      <div class="mt-2">
+        <label>الوصف</label>
+        <textarea id="viol_desc" class="form-control" rows="2"></textarea>
+      </div>
+      <div class="mt-2">
+        <label>البريد الإلكتروني للمُبلّغ (اختياري - لإرسال نسخة من التقرير)</label>
+        <input id="viol_reporter_email" type="email" class="form-control" placeholder="example@email.com" />
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="table table-striped table-bordered" id="violationsTable">
+        <thead>
+          <tr>
+            <th>الطالب</th>
+            <th>الصف</th>
+            <th>النوع</th>
+            <th>التاريخ</th>
+            <th>الوصف</th>
+            <th>خيارات</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- GUIDANCE -->
+  <section id="section-guidance" style="display:none">
+    <div class="section-title">
+      <div>
+        <i class="fas fa-users"></i>
+        <h4>التوجيه الجمعي</h4>
+      </div>
+      <div class="action-buttons">
+        <button class="btn btn-primary" onclick="printAllGuidance()">
+          <i class="fas fa-print"></i> طباعة الكل
+        </button>
+        <button class="btn btn-success" onclick="exportGuidanceToExcel()">
+          <i class="fas fa-file-excel"></i> تصدير Excel
+        </button>
+      </div>
+    </div>
+    
+    <div class="card-panel">
+      <h5>إضافة / تعديل جلسة توجيه</h5>
+      <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <label>الموضوع</label>
+          <input id="guid_topic" class="form-control" />
+        </div>
+        <div class="col-md-3">
+          <label>التاريخ</label>
+          <input id="guid_date" type="date" class="form-control" />
+        </div>
+        <div class="col-md-3">
+          <label>الصف</label>
+          <select id="guid_grade" class="form-select">
+            <option>الحادي عشر الأكاديمي أ</option>
+            <option>الحادي عشر الأكاديمي ب</option>
+            <option>الحادي عشر الأكاديمي ج</option>
+            <option>الثاني عشر صحي</option>
+            <option>الثاني عشر علوم وتكنولوجيا</option>
+            <option>الثاني عشر القانون والعلوم الشرعية واللغات</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button id="guidSaveBtn" class="btn btn-success w-100" onclick="saveGuidance()">
+            <i class="fas fa-save"></i> حفظ
+          </button>
+        </div>
+      </div>
+      <div class="mt-2">
+        <label>ملاحظات</label>
+        <textarea id="guid_notes" class="form-control" rows="2"></textarea>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="table table-striped table-bordered" id="guidanceTable">
+        <thead>
+          <tr>
+            <th>الموضوع</th>
+            <th>التاريخ</th>
+            <th>الصف</th>
+            <th>الملاحظات</th>
+            <th>خيارات</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- MEETINGS -->
+  <section id="section-meetings" style="display:none">
+    <div class="section-title">
+      <div>
+        <i class="fas fa-school"></i>
+        <h4>الاجتماعات</h4>
+      </div>
+      <div class="action-buttons">
+        <button class="btn btn-primary" onclick="printAllMeetings()">
+          <i class="fas fa-print"></i> طباعة الكل
+        </button>
+        <button class="btn btn-success" onclick="exportMeetingsToExcel()">
+          <i class="fas fa-file-excel"></i> تصدير Excel
+        </button>
+      </div>
+    </div>
+    
+    <div class="card-panel">
+      <h5>إضافة / تعديل اجتماع</h5>
+      <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <label>رقم الاجتماع</label>
+          <input id="meet_number" type="number" class="form-control" />
+        </div>
+        <div class="col-md-4">
+          <label>التاريخ</label>
+          <input id="meet_date" type="date" class="form-control" />
+        </div>
+        <div class="col-md-2">
+          <label>عدد الحضور</label>
+          <input id="meet_attendees" type="number" class="form-control" />
+        </div>
+        <div class="col-md-2">
+          <button id="meetSaveBtn" class="btn btn-primary w-100" onclick="saveMeeting()">
+            <i class="fas fa-save"></i> حفظ
+          </button>
+        </div>
+      </div>
+      <div class="mt-2">
+        <label>المواضيع المطروحة</label>
+        <textarea id="meet_topics" class="form-control" rows="3"></textarea>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="table table-striped table-bordered" id="meetingsTable">
+        <thead>
+          <tr>
+            <th>رقم الاجتماع</th>
+            <th>التاريخ</th>
+            <th>عدد الحضور</th>
+            <th>المواضيع</th>
+            <th>خيارات</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- PARENTS -->
+  <section id="section-parents" style="display:none">
+    <div class="section-title">
+      <div>
+        <i class="fas fa-handshake"></i>
+        <h4>مقابلات أولياء الأمور</h4>
+      </div>
+      <div class="action-buttons">
+        <button class="btn btn-primary" onclick="printAllParents()">
+          <i class="fas fa-print"></i> طباعة الكل
+        </button>
+        <button class="btn btn-success" onclick="exportParentsToExcel()">
+          <i class="fas fa-file-excel"></i> تصدير Excel
+        </button>
+      </div>
+    </div>
+    
+    <div class="card-panel">
+      <h5>إضافة / تعديل مقابلة</h5>
+      <div class="row g-2 align-items-end">
+        <div class="col-md-5">
+          <label>اسم الطالب</label>
+          <input id="parent_student" list="studentsDatalist" class="form-control" />
+        </div>
+        <div class="col-md-3">
+          <label>اسم ولي الأمر</label>
+          <input id="parent_name" class="form-control" />
+        </div>
+        <div class="col-md-2">
+          <label>التاريخ</label>
+          <input id="parent_date" type="date" class="form-control" />
+        </div>
+        <div class="col-md-2">
+          <button id="parentSaveBtn" class="btn btn-warning w-100" onclick="saveParent()">
+            <i class="fas fa-save"></i> حفظ
+          </button>
+        </div>
+      </div>
+      <div class="mt-2">
+        <label>موضوع المقابلة</label>
+        <textarea id="parent_topic" class="form-control" rows="2"></textarea>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="table table-striped table-bordered" id="parentsTable">
+        <thead>
+          <tr>
+            <th>الطالب</th>
+            <th>ولي الأمر</th>
+            <th>التاريخ</th>
+            <th>الموضوع</th>
+            <th>خيارات</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- TEACHERS -->
+  <section id="section-teachers" style="display:none">
+    <div class="section-title">
+      <div>
+        <i class="fas fa-chalkboard-teacher"></i>
+        <h4>المعلمون</h4>
+      </div>
+      <div class="action-buttons">
+        <button class="btn btn-primary" onclick="printAllTeachers()">
+          <i class="fas fa-print"></i> طباعة الكل
+        </button>
+        <button class="btn btn-success" onclick="exportTeachersToExcel()">
+          <i class="fas fa-file-excel"></i> تصدير Excel
+        </button>
+      </div>
+    </div>
+    
+    <div class="card-panel">
+      <h5>إضافة / تعديل معلم</h5>
+      <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <label>اسم المعلم</label>
+          <input id="teacher_name" class="form-control" />
+        </div>
+        <div class="col-md-3">
+          <label>المادة</label>
+          <input id="teacher_subject" class="form-control" />
+        </div>
+        <div class="col-md-3">
+          <label>رقم الهاتف</label>
+          <input id="teacher_phone" class="form-control" />
+        </div>
+        <div class="col-md-2">
+          <button id="teacherSaveBtn" class="btn btn-info w-100" onclick="saveTeacher()">
+            <i class="fas fa-save"></i> حفظ
+          </button>
+        </div>
+      </div>
+      <div class="mt-2">
+        <label>ملاحظات</label>
+        <textarea id="teacher_notes" class="form-control" rows="2"></textarea>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="table table-striped table-bordered" id="teachersTable">
+        <thead>
+          <tr>
+            <th>الاسم</th>
+            <th>المادة</th>
+            <th>الهاتف</th>
+            <th>الملاحظات</th>
+            <th>خيارات</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<!-- PRINT AREA -->
+<div id="printArea"></div>
+<!-- Loading Spinner -->
+<div id="loadingSpinner" class="loading-spinner" style="display: none;">
+  <div class="spinner-border text-primary" role="status">
+    <span class="visually-hidden">جاري التحميل...</span>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const themeToggle = document.getElementById('themeToggle');
+  const savedTheme = localStorage.getItem('theme') || 'light';
+  
+  if (savedTheme === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    if (themeToggle) {
+      themeToggle.innerHTML = '<i class="fas fa-sun"></i><span class="theme-toggle-text">الوضع النهاري</span>';
+    }
+  }
+  
+  if (themeToggle) {
+    themeToggle.addEventListener('click', function() {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      
+      if (newTheme === 'dark') {
+        themeToggle.innerHTML = '<i class="fas fa-sun"></i><span class="theme-toggle-text">الوضع النهاري</span>';
+      } else {
+        themeToggle.innerHTML = '<i class="fas fa-moon"></i><span class="theme-toggle-text">الوضع الليلي</span>';
+      }
+    });
+  }
+});
+</script>
+
+<script src="script-complete.js"></script>
+
+
+
+</body>
+</html>

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="نظام الإرشاد المدرسي المتطور - نظام شامل لإدارة المدرسة">
+  <title>نظام الإرشاد المدرسي</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="styles/home-style.css">
+</head>
+<body>
+
+<!-- شريط التنقل العلوي -->
+<nav class="main-navbar">
+  <div class="container">
+    <div class="navbar-content">
+      <div class="navbar-brand">
+        <img src="https://apps.moe.gov.jo/qrc/LearnSupport/public/assets/images/logo/moe_logo.png" alt="شعار الوزارة" class="logo">
+        <div class="brand-text">
+          <h4>نظام الإرشاد المدرسي</h4>
+          <p>منصة تعليمية متكاملة</p>
+        </div>
+      </div>
+      <div class="navbar-actions">
+        <button class="lang-btn" onclick="toggleLanguage()">
+          <i class="fas fa-globe"></i>
+          <span id="langText">English</span>
+        </button>
+        <button class="theme-btn" onclick="toggleTheme()" title="تبديل الوضع">
+          <i class="fas fa-moon" id="themeIcon"></i>
+        </button>
+        <a href="staff.html" class="btn btn-staff">
+          <i class="fas fa-user-tie"></i>
+          <span>تسجيل دخول الموظفين</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- القسم الرئيسي - Hero Section -->
+<section class="hero-section">
+  <div class="hero-overlay"></div>
+  <div class="container">
+    <div class="hero-content">
+      <div class="hero-text">
+        <span class="hero-label">مرحباً بكم في</span>
+        <h1 class="hero-title">نظام الإرشاد المدرسي</h1>
+        <p class="hero-description">
+          منصة تعليمية متكاملة تربط أولياء الأمور بالمعلمين والإدارة المدرسية
+          <br>
+          لمتابعة أفضل للأداء الأكاديمي والسلوكي
+        </p>
+        <div class="hero-buttons">
+          <button class="btn btn-primary btn-lg" onclick="showParentLogin()">
+            <i class="fas fa-user-friends"></i>
+            بوابة أولياء الأمور
+          </button>
+          <button class="btn btn-outline-light btn-lg" onclick="scrollToFeatures()">
+            <i class="fas fa-info-circle"></i>
+            تعرف على المزيد
+          </button>
+        </div>
+      </div>
+      <div class="hero-image">
+        <div class="floating-card card-1">
+          <i class="fas fa-user-graduate"></i>
+          <h5>متابعة الطلاب</h5>
+        </div>
+        <div class="floating-card card-2">
+          <i class="fas fa-chart-line"></i>
+          <h5>تقارير مفصلة</h5>
+        </div>
+        <div class="floating-card card-3">
+          <i class="fas fa-bell"></i>
+          <h5>إشعارات فورية</h5>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- قسم الميزات -->
+<section class="features-section" id="features">
+  <div class="container">
+    <div class="section-header">
+      <h2>ميزات النظام</h2>
+      <p>نظام شامل ومتكامل لإدارة العملية التعليمية والإرشادية</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="fas fa-user-graduate"></i>
+        </div>
+        <h3>إدارة الطلاب</h3>
+        <p>نظام متكامل لإدارة بيانات الطلاب ومتابعة تقدمهم الأكاديمي والسلوكي</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="fas fa-calendar-check"></i>
+        </div>
+        <h3>الحضور والغياب</h3>
+        <p>تسجيل يومي للحضور مع إشعارات تلقائية لأولياء الأمور</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="fas fa-chart-bar"></i>
+        </div>
+        <h3>الدرجات والتقييمات</h3>
+        <p>متابعة شاملة للأداء الأكاديمي مع رسوم بيانية توضيحية</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="fas fa-comments"></i>
+        </div>
+        <h3>التواصل المباشر</h3>
+        <p>نظام شات متطور بين المعلمين وأولياء الأمور</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="fas fa-calendar-alt"></i>
+        </div>
+        <h3>التقويم المدرسي</h3>
+        <p>عرض الفعاليات والامتحانات والمناسبات المدرسية</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h3>متابعة المخالفات</h3>
+        <p>نظام شامل لتسجيل ومتابعة المخالفات السلوكية</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="fas fa-bell"></i>
+        </div>
+        <h3>إشعارات ذكية</h3>
+        <p>إشعارات فورية عبر البريد والرسائل القصيرة</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="fas fa-shield-alt"></i>
+        </div>
+        <h3>أمان متقدم</h3>
+        <p>حماية البيانات بأعلى معايير الأمان</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- قسم الإحصائيات -->
+<section class="stats-section">
+  <div class="container">
+    <div class="stats-grid">
+      <div class="stat-item">
+        <i class="fas fa-users"></i>
+        <h3 class="counter" data-target="500">0</h3>
+        <p>طالب وطالبة</p>
+      </div>
+      <div class="stat-item">
+        <i class="fas fa-chalkboard-teacher"></i>
+        <h3 class="counter" data-target="50">0</h3>
+        <p>معلم ومعلمة</p>
+      </div>
+      <div class="stat-item">
+        <i class="fas fa-book-reader"></i>
+        <h3 class="counter" data-target="8">0</h3>
+        <p>صف دراسي</p>
+      </div>
+      <div class="stat-item">
+        <i class="fas fa-trophy"></i>
+        <h3 class="counter" data-target="95">0</h3>
+        <p>نسبة النجاح %</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- قسم تسجيل دخول أولياء الأمور (Modal) -->
+<div class="modal-overlay" id="parentLoginModal">
+  <div class="modal-content">
+    <button class="modal-close" onclick="hideParentLogin()">
+      <i class="fas fa-times"></i>
+    </button>
+    <div class="modal-header">
+      <img src="https://apps.moe.gov.jo/qrc/LearnSupport/public/assets/images/logo/moe_logo.png" alt="شعار">
+      <h3>بوابة أولياء الأمور</h3>
+      <p>تسجيل الدخول بالبريد الإلكتروني</p>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label><i class="fas fa-envelope"></i> البريد الإلكتروني</label>
+        <input type="email" id="parentEmail" class="form-control" placeholder="أدخل البريد الإلكتروني المسجل">
+      </div>
+      <div id="loginMessage" class="alert" style="display:none"></div>
+      <button class="btn btn-primary w-100 btn-lg" onclick="parentLogin()">
+        <i class="fas fa-sign-in-alt"></i>
+        تسجيل الدخول
+      </button>
+      <div class="modal-footer">
+        <p class="text-muted">
+          <i class="fas fa-info-circle"></i>
+          استخدم البريد الإلكتروني المسجل في المدرسة
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<footer class="main-footer">
+  <div class="container">
+    <div class="footer-content">
+      <div class="footer-section">
+        <h4>نظام الإرشاد المدرسي</h4>
+        <p>منصة تعليمية متكاملة للتواصل بين المدرسة وأولياء الأمور</p>
+        <div class="social-links">
+          <a href="#"><i class="fab fa-facebook"></i></a>
+          <a href="#"><i class="fab fa-twitter"></i></a>
+          <a href="#"><i class="fab fa-instagram"></i></a>
+          <a href="#"><i class="fab fa-youtube"></i></a>
+        </div>
+      </div>
+      <div class="footer-section">
+        <h4>روابط سريعة</h4>
+        <ul>
+          <li><a href="#"><i class="fas fa-angle-left"></i> الرئيسية</a></li>
+          <li><a href="#features"><i class="fas fa-angle-left"></i> الميزات</a></li>
+          <li><a href="staff.html"><i class="fas fa-angle-left"></i> دخول الموظفين</a></li>
+          <li><a href="#" onclick="showParentLogin()"><i class="fas fa-angle-left"></i> بوابة أولياء الأمور</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h4>تواصل معنا</h4>
+        <ul class="contact-info">
+          <li><i class="fas fa-phone"></i> +962 6 1234567</li>
+          <li><i class="fas fa-envelope"></i> info@school.edu.jo</li>
+          <li><i class="fas fa-map-marker-alt"></i> عمان، الأردن</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2024 نظام الإرشاد المدرسي. جميع الحقوق محفوظة</p>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="scripts/home-script.js"></script>
+
+</body>
+</html>
