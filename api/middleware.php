@@ -1,7 +1,9 @@
 <?php
 
 function requireAuth() {
-    session_start();
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
     
     if (!isset($_SESSION['user_id']) || !isset($_SESSION['last_activity'])) {
         http_response_code(401);
@@ -21,7 +23,9 @@ function requireAuth() {
 }
 
 function requireRole($allowedRoles) {
-    session_start();
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
     
     if (!isset($_SESSION['user_id']) || !isset($_SESSION['role'])) {
         http_response_code(401);
