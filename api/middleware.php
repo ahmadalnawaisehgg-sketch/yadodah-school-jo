@@ -5,13 +5,21 @@ function requireAuth() {
         session_start();
     }
     
+    // Debug: log session info
+    error_log("🔍 Session ID: " . session_id());
+    error_log("🔍 Session data: " . json_encode($_SESSION));
+    error_log("🔍 Cookies: " . json_encode($_COOKIE));
+    
     if (!isset($_SESSION['user_id']) || !isset($_SESSION['last_activity'])) {
+        error_log("❌ Auth failed: user_id or last_activity not set");
         http_response_code(401);
         echo json_encode(['success' => false, 'error' => 'غير مصرح به', 'require_login' => true]);
         exit;
     }
     
-    if (time() - $_SESSION['last_activity'] > 3600) {
+    $timeDiff = time() - $_SESSION['last_activity'];
+    if ($timeDiff > 7200) {
+        error_log("❌ Session expired: $timeDiff seconds old");
         session_destroy();
         http_response_code(401);
         echo json_encode(['success' => false, 'error' => 'انتهت الجلسة', 'require_login' => true]);
