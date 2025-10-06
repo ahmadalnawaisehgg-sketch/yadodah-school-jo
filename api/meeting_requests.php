@@ -25,35 +25,38 @@ try {
                 $where['status'] = $status;
             }
             
-            $requests = $supabase->query("
-                SELECT mr.*, 
-                    p.full_name as parent_name,
-                    p.email as parent_email,
-                    p.phone as parent_phone,
-                    s.name as student_name,
-                    s.grade,
-                    s.section
-                FROM meeting_requests mr
-                INNER JOIN parents p ON mr.parent_id = p.id
-                INNER JOIN students s ON mr.student_id = s.id
-                " . (!empty($status) ? "WHERE mr.status = '$status'" : "") . "
-                ORDER BY mr.created_at DESC
-            ");
+            $requests = $supabase->select('meeting_requests', '*', $where, ['order' => 'created_at.desc']);
+            
+            foreach ($requests as &$req) {
+                $parent = $supabase->select('parents', 'full_name,email,phone', ['id' => $req['parent_id']]);
+                if (!empty($parent)) {
+                    $req['parent_name'] = $parent[0]['full_name'] ?? '';
+                    $req['parent_email'] = $parent[0]['email'] ?? '';
+                    $req['parent_phone'] = $parent[0]['phone'] ?? '';
+                }
+                
+                $student = $supabase->select('students', 'name,grade,section', ['id' => $req['student_id']]);
+                if (!empty($student)) {
+                    $req['student_name'] = $student[0]['name'] ?? '';
+                    $req['grade'] = $student[0]['grade'] ?? '';
+                    $req['section'] = $student[0]['section'] ?? '';
+                }
+            }
             
             echo json_encode($requests ?: []);
             
         } elseif ($action === 'stats') {
             // إحصائيات الطلبات
-            $pending = $supabase->query("SELECT COUNT(*) as count FROM meeting_requests WHERE status = 'pending'");
-            $approved = $supabase->query("SELECT COUNT(*) as count FROM meeting_requests WHERE status = 'approved'");
-            $rejected = $supabase->query("SELECT COUNT(*) as count FROM meeting_requests WHERE status = 'rejected'");
+            $pendingRequests = $supabase->select('meeting_requests', '*', ['status' => 'pending']);
+            $approvedRequests = $supabase->select('meeting_requests', '*', ['status' => 'approved']);
+            $rejectedRequests = $supabase->select('meeting_requests', '*', ['status' => 'rejected']);
             
             echo json_encode([
                 'success' => true,
                 'stats' => [
-                    'pending' => $pending[0]['count'] ?? 0,
-                    'approved' => $approved[0]['count'] ?? 0,
-                    'rejected' => $rejected[0]['count'] ?? 0
+                    'pending' => count($pendingRequests),
+                    'approved' => count($approvedRequests),
+                    'rejected' => count($rejectedRequests)
                 ]
             ]);
         }
