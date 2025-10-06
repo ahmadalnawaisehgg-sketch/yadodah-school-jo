@@ -4,7 +4,9 @@
  * يدعم تسجيل الدخول بالإيميل فقط (Smart Login)
  */
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 require __DIR__ . '/config.php';
 require __DIR__ . '/middleware.php';
@@ -66,14 +68,70 @@ try {
                 $links = $supabase->select('parent_student_link', 'student_id,relation,can_view_violations,can_view_meetings,can_view_progress', ['parent_id' => $parent['id']]);
                 error_log("📊 Student links found: " . count($links));
                 
+                // إذا لم يكن هناك طلاب مرتبطين، نحاول البحث تلقائياً
                 if (empty($links)) {
-                    error_log("❌ No students linked to this parent");
-                    http_response_code(400);
-                    echo json_encode([
-                        'success' => false, 
-                        'error' => 'لا يوجد طلاب مرتبطين بهذا الحساب. يرجى التواصل مع المدرسة لربط حسابك بأبنائك.'
-                    ]);
-                    exit;
+                    error_log("⚠️ No students linked, attempting auto-link...");
+                    
+                    // البحث عن طلاب بنفس البريد الإلكتروني
+                    $studentsToLink = [];
+                    
+                    // البحث في guardian_email
+                    $studentsByGuardianEmail = $supabase->select('students', '*', ['guardian_email' => $email]);
+                    if (!empty($studentsByGuardianEmail)) {
+                        $studentsToLink = array_merge($studentsToLink, $studentsByGuardianEmail);
+                    }
+                    
+                    // البحث في email
+                    $studentsByEmail = $supabase->select('students', '*', ['email' => $email]);
+                    if (!empty($studentsByEmail)) {
+                        $studentsToLink = array_merge($studentsToLink, $studentsByEmail);
+                    }
+                    
+                    // إزالة التكرار
+                    $studentIds = [];
+                    $uniqueStudents = [];
+                    foreach ($studentsToLink as $student) {
+                        if (!in_array($student['id'], $studentIds)) {
+                            $studentIds[] = $student['id'];
+                            $uniqueStudents[] = $student;
+                        }
+                    }
+                    
+                    if (!empty($uniqueStudents)) {
+                        error_log("✅ Found " . count($uniqueStudents) . " students to auto-link");
+                        
+                        // ربط الطلاب بولي الأمر
+                        foreach ($uniqueStudents as $student) {
+                            try {
+                                $supabase->insert('parent_student_link', [
+                                    'parent_id' => $parent['id'],
+                                    'student_id' => $student['id'],
+                                    'relation' => $student['guardian_relation'] ?? 'ولي أمر',
+                                    'is_primary' => true,
+                                    'can_view_violations' => true,
+                                    'can_view_meetings' => true,
+                                    'can_view_progress' => true
+                                ], false);
+                                error_log("✅ Linked student: " . $student['name']);
+                            } catch (Exception $linkError) {
+                                error_log("❌ Failed to link student: " . $linkError->getMessage());
+                            }
+                        }
+                        
+                        // إعادة جلب الروابط
+                        $links = $supabase->select('parent_student_link', 'student_id,relation,can_view_violations,can_view_meetings,can_view_progress', ['parent_id' => $parent['id']]);
+                    }
+                    
+                    // إذا لا يزال لا يوجد طلاب مرتبطين
+                    if (empty($links)) {
+                        error_log("❌ No students found for this parent after auto-link attempt");
+                        http_response_code(400);
+                        echo json_encode([
+                            'success' => false, 
+                            'error' => 'لا يوجد طلاب مرتبطين بهذا الحساب. يرجى التواصل مع المدرسة لربط حسابك بأبنائك.'
+                        ]);
+                        exit;
+                    }
                 }
                 
                 $studentLinks = [];
