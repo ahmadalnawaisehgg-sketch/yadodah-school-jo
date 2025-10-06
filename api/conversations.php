@@ -4,11 +4,11 @@
  * يدعم المحادثات بين أولياء الأمور والمسؤولين
  */
 
+require __DIR__ . '/config.php';
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
-require __DIR__ . '/config.php';
 require __DIR__ . '/middleware.php';
 require __DIR__ . '/email_service.php';
 
@@ -288,10 +288,11 @@ try {
             }
 
             // التحقق من المشاركة
-            $participant = $supabase->query("
-                SELECT * FROM conversation_participants 
-                WHERE conversation_id = $conversationId AND user_id = $userId AND user_type = '$userType'
-            ");
+            $participant = $supabase->select('conversation_participants', '*', [
+                'conversation_id' => $conversationId,
+                'user_id' => $userId,
+                'user_type' => $userType
+            ]);
 
             if (empty($participant)) {
                 http_response_code(403);
@@ -317,10 +318,13 @@ try {
             ], ['id' => $conversationId], false);
 
             // إشعار المشاركين الآخرين
-            $otherParticipants = $supabase->query("
-                SELECT * FROM conversation_participants 
-                WHERE conversation_id = $conversationId AND NOT (user_id = $userId AND user_type = '$userType')
-            ");
+            $allParticipants = $supabase->select('conversation_participants', '*', [
+                'conversation_id' => $conversationId
+            ]);
+            
+            $otherParticipants = array_filter($allParticipants, function($p) use ($userId, $userType) {
+                return !($p['user_id'] == $userId && $p['user_type'] == $userType);
+            });
 
             foreach ($otherParticipants as $p) {
                 if ($p['user_type'] === 'user') {
