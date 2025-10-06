@@ -19,15 +19,15 @@ try {
         $startDate = "$year-$month-01";
         $endDate = date('Y-m-t', strtotime($startDate));
         
-        $query = "SELECT * FROM school_calendar WHERE start_date BETWEEN '$startDate' AND '$endDate'";
+        $filters = [
+            'start_date' => ['gte' => $startDate, 'lte' => $endDate]
+        ];
         
         if ($eventType) {
-            $query .= " AND event_type = '$eventType'";
+            $filters['event_type'] = $eventType;
         }
         
-        $query .= " ORDER BY start_date ASC";
-        
-        $events = $supabase->query($query);
+        $events = $supabase->select('school_calendar', '*', $filters, ['order' => 'start_date.asc']);
         
         echo json_encode(['success' => true, 'events' => $events ?: []]);
         
