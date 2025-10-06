@@ -16,7 +16,24 @@ try {
     if ($method === 'GET') {
         $action = $_GET['action'] ?? 'conversations';
         
-        if ($action === 'conversations') {
+        if ($action === 'teachers') {
+            // جلب قائمة جميع المعلمين المتاحين للشات
+            $teachers = $supabase->select('teachers', '*', ['is_active' => true], ['order' => 'name.asc']);
+            
+            $teachersList = [];
+            foreach ($teachers as $teacher) {
+                $teachersList[] = [
+                    'id' => $teacher['id'],
+                    'name' => $teacher['name'],
+                    'subject' => $teacher['subject'] ?? '',
+                    'specialization' => $teacher['specialization'] ?? '',
+                    'email' => $teacher['email'] ?? ''
+                ];
+            }
+            
+            echo json_encode(['success' => true, 'teachers' => $teachersList]);
+            
+        } elseif ($action === 'conversations') {
             $userType = $_SESSION['user_type'] ?? 'staff';
             
             if ($userType === 'parent') {
@@ -111,34 +128,54 @@ try {
         if ($action === 'start_conversation') {
             $teacherId = intval($data['teacher_id'] ?? 0);
             $parentId = $_SESSION['parent_id'] ?? 0;
-            $studentId = intval($data['student_id'] ?? 0);
+            $studentId = !empty($data['student_id']) ? intval($data['student_id']) : null;
             $subject = $data['subject'] ?? 'محادثة عامة';
             
-            if (!$teacherId || !$parentId || !$studentId) {
+            if (!$teacherId || !$parentId) {
                 http_response_code(400);
                 echo json_encode(['success' => false, 'error' => 'البيانات غير مكتملة']);
                 exit;
             }
             
-            $existing = $supabase->select('conversations', '*', [
+            // البحث عن محادثة موجودة
+            $searchConditions = [
                 'teacher_id' => $teacherId,
-                'parent_id' => $parentId,
-                'student_id' => $studentId
-            ]);
+                'parent_id' => $parentId
+            ];
             
-            if (!empty($existing)) {
-                echo json_encode(['success' => true, 'conversation_id' => $existing[0]['id'], 'message' => 'المحادثة موجودة مسبقاً']);
+            if ($studentId) {
+                $searchConditions['student_id'] = $studentId;
+            }
+            
+            $existing = $supabase->select('conversations', '*', $searchConditions);
+            
+            // تصفية النتائج للتأكد من تطابق student_id (بما في ذلك NULL)
+            $matchingConversation = null;
+            foreach ($existing as $conv) {
+                if (($studentId === null && $conv['student_id'] === null) || 
+                    ($studentId !== null && $conv['student_id'] == $studentId)) {
+                    $matchingConversation = $conv;
+                    break;
+                }
+            }
+            
+            if ($matchingConversation) {
+                echo json_encode(['success' => true, 'conversation_id' => $matchingConversation['id'], 'message' => 'المحادثة موجودة مسبقاً']);
                 exit;
             }
             
             $conversationData = [
                 'teacher_id' => $teacherId,
                 'parent_id' => $parentId,
-                'student_id' => $studentId,
                 'subject' => $subject,
                 'status' => 'active',
-                'last_message_at' => date('Y-m-d H:i:s')
+                'last_message_at' => date('Y-m-d H:i:s'),
+                'conversation_type' => $studentId ? 'student_specific' : 'general'
             ];
+            
+            if ($studentId) {
+                $conversationData['student_id'] = $studentId;
+            }
             
             $result = $supabase->insert('conversations', $conversationData);
             $conversationId = $result[0]['id'] ?? null;
