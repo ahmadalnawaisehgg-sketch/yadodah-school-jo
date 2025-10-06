@@ -27,7 +27,7 @@ try {
             if ($sectionId) $conditions['section_id'] = intval($sectionId);
             if ($studentId) $conditions['student_id'] = intval($studentId);
             
-            $attendance = $supabase->select('attendance', '*', $conditions, 'date.desc');
+            $attendance = $supabase->select('attendance', '*', $conditions, ['order' => 'date.desc']);
             echo json_encode(['success' => true, 'data' => $attendance ?: []]);
             
         } elseif ($action === 'statistics') {
@@ -41,29 +41,14 @@ try {
                 exit;
             }
             
-            $total = $supabase->query("
-                SELECT COUNT(*) as total FROM attendance
-                WHERE student_id = $studentId
-                AND date BETWEEN '$startDate' AND '$endDate'
-            ");
+            $allRecords = $supabase->select('attendance', '*', [
+                'student_id' => $studentId,
+                'date' => ['gte' => $startDate, 'lte' => $endDate]
+            ]);
             
-            $present = $supabase->query("
-                SELECT COUNT(*) as total FROM attendance
-                WHERE student_id = $studentId
-                AND date BETWEEN '$startDate' AND '$endDate'
-                AND status = 'present'
-            ");
-            
-            $absent = $supabase->query("
-                SELECT COUNT(*) as total FROM attendance
-                WHERE student_id = $studentId
-                AND date BETWEEN '$startDate' AND '$endDate'
-                AND status = 'absent'
-            ");
-            
-            $totalCount = $total[0]['total'] ?? 0;
-            $presentCount = $present[0]['total'] ?? 0;
-            $absentCount = $absent[0]['total'] ?? 0;
+            $totalCount = count($allRecords);
+            $presentCount = count(array_filter($allRecords, fn($r) => $r['status'] === 'present'));
+            $absentCount = count(array_filter($allRecords, fn($r) => $r['status'] === 'absent'));
             
             $percentage = $totalCount > 0 ? ($presentCount / $totalCount) * 100 : 0;
             
