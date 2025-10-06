@@ -4,7 +4,9 @@
  * عرض معلومات الطلاب، المخالفات، المواعيد، إلخ
  */
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 require __DIR__ . '/config.php';
 require __DIR__ . '/middleware.php';
