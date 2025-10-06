@@ -10,6 +10,7 @@ let parentData = null;
 let studentsData = [];
 let conversationsData = [];
 let currentConversation = null;
+let teachersData = [];
 
 // ========================================
 // تسجيل الدخول
@@ -780,5 +781,152 @@ async function checkParentSession() {
         }
     } catch (error) {
         console.error('Session check error:', error);
+    }
+}
+
+// ========================================
+// نظام المحادثات الجديد
+// ========================================
+async function startNewConversation() {
+    await loadTeachersList();
+    const modal = new bootstrap.Modal(document.getElementById('teachersListModal'));
+    modal.show();
+}
+
+async function loadTeachersList() {
+    const container = document.getElementById('teachersListContainer');
+    
+    try {
+        const response = await fetch(API_BASE + 'chat.php?action=teachers', {
+            credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.teachers) {
+            teachersData = data.teachers;
+            renderTeachersList(teachersData);
+        } else {
+            container.innerHTML = '<div class="text-center text-muted py-4"><p>لا يوجد معلمين متاحين</p></div>';
+        }
+    } catch (error) {
+        console.error('Error loading teachers:', error);
+        container.innerHTML = '<div class="text-center text-danger py-4"><p>حدث خطأ في تحميل المعلمين</p></div>';
+    }
+}
+
+function renderTeachersList(teachers) {
+    const container = document.getElementById('teachersListContainer');
+    
+    if (teachers.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted py-4"><p>لا يوجد معلمين متاحين</p></div>';
+        return;
+    }
+    
+    let html = '';
+    teachers.forEach(teacher => {
+        const initials = teacher.name.split(' ').map(n => n[0]).join('').substring(0, 2);
+        html += `
+            <div class="teacher-card" onclick="selectTeacher(${teacher.id}, '${teacher.name}')">
+                <div class="teacher-card-header">
+                    <div class="teacher-avatar">${initials}</div>
+                    <div class="teacher-info">
+                        <h6>${teacher.name}</h6>
+                        <p><i class="fas fa-book"></i> ${teacher.subject || 'غير محدد'}</p>
+                    </div>
+                </div>
+                ${teacher.specialization ? `<p class="text-muted mb-0"><small><i class="fas fa-graduation-cap"></i> ${teacher.specialization}</small></p>` : ''}
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function filterTeachers() {
+    const searchTerm = document.getElementById('searchTeacher').value.toLowerCase();
+    const filtered = teachersData.filter(t => 
+        t.name.toLowerCase().includes(searchTerm) || 
+        (t.subject && t.subject.toLowerCase().includes(searchTerm))
+    );
+    renderTeachersList(filtered);
+}
+
+function selectTeacher(teacherId, teacherName) {
+    document.getElementById('selectedTeacherId').value = teacherId;
+    document.getElementById('selectedTeacherName').value = teacherName;
+    
+    // ملء قائمة الطلاب
+    const studentSelect = document.getElementById('messageStudentSelect');
+    studentSelect.innerHTML = '<option value="">محادثة عامة - بدون طالب محدد</option>' +
+        studentsData.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    
+    // إخفاء modal المعلمين وإظهار modal الرسالة
+    bootstrap.Modal.getInstance(document.getElementById('teachersListModal')).hide();
+    const messageModal = new bootstrap.Modal(document.getElementById('newMessageModal'));
+    messageModal.show();
+}
+
+async function sendFirstMessage() {
+    const teacherId = document.getElementById('selectedTeacherId').value;
+    const studentId = document.getElementById('messageStudentSelect').value || null;
+    const subject = document.getElementById('messageSubject').value.trim() || 'محادثة عامة';
+    const message = document.getElementById('messageContent').value.trim();
+    
+    if (!message) {
+        showNotification('يرجى كتابة رسالة', 'error');
+        return;
+    }
+    
+    try {
+        // بدء المحادثة
+        const convResponse = await fetch(API_BASE + 'chat.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
+            body: JSON.stringify({
+                action: 'start_conversation',
+                teacher_id: teacherId,
+                student_id: studentId,
+                subject: subject
+            })
+        });
+        
+        const convData = await convResponse.json();
+        
+        if (convData.success && convData.conversation_id) {
+            // إرسال الرسالة الأولى
+            const msgResponse = await fetch(API_BASE + 'chat.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                credentials: 'include',
+                body: JSON.stringify({
+                    action: 'send_message',
+                    conversation_id: convData.conversation_id,
+                    message: message
+                })
+            });
+            
+            const msgData = await msgResponse.json();
+            
+            if (msgData.success) {
+                showNotification('تم بدء المحادثة بنجاح', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('newMessageModal')).hide();
+                
+                // تنظيف النموذج
+                document.getElementById('messageSubject').value = 'محادثة عامة';
+                document.getElementById('messageContent').value = '';
+                
+                // تحديث قائمة المحادثات
+                loadMessages();
+            } else {
+                showNotification(msgData.error || 'حدث خطأ في إرسال الرسالة', 'error');
+            }
+        } else {
+            showNotification(convData.error || 'حدث خطأ في بدء المحادثة', 'error');
+        }
+    } catch (error) {
+        console.error('Error sending message:', error);
+        showNotification('حدث خطأ في الاتصال بالخادم', 'error');
     }
 }
