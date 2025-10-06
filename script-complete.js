@@ -661,9 +661,13 @@ async function saveStudent() {
     const national_id = document.getElementById('stu_national_id').value.trim();
     const email = document.getElementById('stu_email').value.trim();
     const guardian = document.getElementById('stu_guardian').value.trim();
+    const guardian_email = document.getElementById('stu_guardian_email')?.value.trim() || '';
+    const guardian_phone = document.getElementById('stu_guardian_phone')?.value.trim() || '';
+    const guardian_relation = document.getElementById('stu_guardian_relation')?.value || '';
     const grade = document.getElementById('stu_grade').value;
     const section = document.getElementById('stu_section').value;
     const phone = document.getElementById('stu_phone').value.trim();
+    const address = document.getElementById('stu_address')?.value.trim() || '';
     
     if (!name) {
         showNotification('يرجى إدخال اسم الطالب', 'error');
@@ -675,14 +679,23 @@ async function saveStudent() {
         return;
     }
     
+    if (guardian_email && !guardian_email.includes('@')) {
+        showNotification('يرجى إدخال بريد إلكتروني صحيح لولي الأمر', 'error');
+        return;
+    }
+    
     const studentData = { 
         name, 
         national_id, 
         email, 
-        guardian, 
+        guardian,
+        guardian_email,
+        guardian_phone,
+        guardian_relation,
         grade, 
         section, 
-        phone 
+        phone,
+        address
     };
     
     if (editingId && currentEditingType === 'student') {
@@ -716,9 +729,22 @@ async function editStudent(id) {
         document.getElementById('stu_national_id').value = student.national_id || '';
         document.getElementById('stu_email').value = student.email || '';
         document.getElementById('stu_guardian').value = student.guardian || '';
+        
+        const guardianEmailField = document.getElementById('stu_guardian_email');
+        if (guardianEmailField) guardianEmailField.value = student.guardian_email || '';
+        
+        const guardianPhoneField = document.getElementById('stu_guardian_phone');
+        if (guardianPhoneField) guardianPhoneField.value = student.guardian_phone || '';
+        
+        const guardianRelationField = document.getElementById('stu_guardian_relation');
+        if (guardianRelationField) guardianRelationField.value = student.guardian_relation || '';
+        
         document.getElementById('stu_grade').value = student.grade || '';
         document.getElementById('stu_section').value = student.section || '';
         document.getElementById('stu_phone').value = student.phone || '';
+        
+        const addressField = document.getElementById('stu_address');
+        if (addressField) addressField.value = student.address || '';
         document.getElementById('stuSaveBtn').innerHTML = '<i class="fas fa-save"></i> تحديث';
         editingId = id;
         currentEditingType = 'student';
@@ -744,9 +770,22 @@ function clearStudentForm() {
     document.getElementById('stu_national_id').value = '';
     document.getElementById('stu_email').value = '';
     document.getElementById('stu_guardian').value = '';
+    
+    const guardianEmailField = document.getElementById('stu_guardian_email');
+    if (guardianEmailField) guardianEmailField.value = '';
+    
+    const guardianPhoneField = document.getElementById('stu_guardian_phone');
+    if (guardianPhoneField) guardianPhoneField.value = '';
+    
+    const guardianRelationField = document.getElementById('stu_guardian_relation');
+    if (guardianRelationField) guardianRelationField.selectedIndex = 0;
+    
     document.getElementById('stu_grade').selectedIndex = 0;
     document.getElementById('stu_section').selectedIndex = 0;
     document.getElementById('stu_phone').value = '';
+    
+    const addressField = document.getElementById('stu_address');
+    if (addressField) addressField.value = '';
     document.getElementById('stuSaveBtn').innerHTML = '<i class="fas fa-save"></i> حفظ';
     editingId = null;
     currentEditingType = null;
