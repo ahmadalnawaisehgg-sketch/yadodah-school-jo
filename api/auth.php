@@ -79,6 +79,8 @@ try {
                     $_SESSION['last_activity'] = time();
                     
                     error_log("✅ Login successful for user: $username");
+                    error_log("🔍 Session ID after login: " . session_id());
+                    error_log("🔍 Session data after login: " . json_encode($_SESSION));
                     
                     $supabase->update('users', ['last_login' => date('Y-m-d H:i:s')], ['id' => $user['id']], false);
                     
