@@ -1,9 +1,9 @@
 <?php
+require __DIR__ . '/config.php';
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
-require __DIR__ . '/config.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
