@@ -4,11 +4,11 @@
  * يدعم تسجيل الدخول بالإيميل فقط (Smart Login)
  */
 
+require __DIR__ . '/config.php';
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
-require __DIR__ . '/config.php';
 require __DIR__ . '/middleware.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
