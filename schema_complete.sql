@@ -1,596 +1,190 @@
+-- ========================================
+-- إصلاح قاعدة البيانات - النسخة النهائية
+-- ========================================
+-- نسخ هذا الكود في Supabase SQL Editor وتنفيذه
+-- ========================================
 
 -- ========================================
--- نظام الإرشاد المدرسي الموحد - قاعدة بيانات كاملة
--- يعمل من الصفر بدون أخطاء
--- تم التحديث: أكتوبر 2024
+-- الخطوة 1: حذف الجداول القديمة إذا كانت موجودة
 -- ========================================
-
--- حذف الجداول القديمة إن وجدت (بالترتيب الصحيح)
-DROP TABLE IF EXISTS activity_log CASCADE;
-DROP TABLE IF EXISTS email_notifications CASCADE;
-DROP TABLE IF EXISTS notifications CASCADE;
-DROP TABLE IF EXISTS parent_preferences CASCADE;
-DROP TABLE IF EXISTS user_preferences CASCADE;
-DROP TABLE IF EXISTS translations CASCADE;
-DROP TABLE IF EXISTS emergency_notifications CASCADE;
-DROP TABLE IF EXISTS chat_messages CASCADE;
+DROP TABLE IF EXISTS messages CASCADE;
+DROP TABLE IF EXISTS conversation_participants CASCADE;
 DROP TABLE IF EXISTS conversations CASCADE;
-DROP TABLE IF EXISTS complaints_suggestions CASCADE;
-DROP TABLE IF EXISTS school_calendar CASCADE;
-DROP TABLE IF EXISTS academic_grades CASCADE;
-DROP TABLE IF EXISTS attendance CASCADE;
-DROP TABLE IF EXISTS parent_meetings CASCADE;
-DROP TABLE IF EXISTS meetings CASCADE;
-DROP TABLE IF EXISTS guidance_sessions CASCADE;
-DROP TABLE IF EXISTS violations CASCADE;
-DROP TABLE IF EXISTS parent_student_link CASCADE;
-DROP TABLE IF EXISTS parents CASCADE;
-DROP TABLE IF EXISTS teachers CASCADE;
-DROP TABLE IF EXISTS students CASCADE;
-DROP TABLE IF EXISTS sections CASCADE;
-DROP TABLE IF EXISTS grades CASCADE;
-DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS message_templates CASCADE;
+DROP TABLE IF EXISTS meeting_requests CASCADE;
+DROP TABLE IF EXISTS guidance_attendance CASCADE;
 
 -- ========================================
--- 1. جدول المستخدمين (المسؤولين والمرشدين)
+-- الخطوة 2: إضافة الحقول الناقصة للجداول الموجودة
 -- ========================================
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(100) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    full_name VARCHAR(255),
-    email VARCHAR(255) UNIQUE,
-    phone VARCHAR(50),
-    role VARCHAR(50) DEFAULT 'counselor',
-    permissions TEXT,
-    avatar_url TEXT,
-    is_active BOOLEAN DEFAULT TRUE,
-    last_login TIMESTAMP,
-    two_factor_enabled BOOLEAN DEFAULT FALSE,
-    two_factor_secret VARCHAR(255),
-    backup_codes TEXT,
-    failed_login_attempts INT DEFAULT 0,
-    locked_until TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
 
--- إضافة مستخدمين افتراضيين
-INSERT INTO users (username, password_hash, full_name, role, email) VALUES 
-('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'مدير النظام', 'admin', 'admin@school.com'),
-('counselor', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'المرشد التربوي', 'counselor', 'counselor@school.com');
+-- إضافة حقول الصلاحيات لجدول parent_student_link
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='parent_student_link' AND column_name='can_view_violations') THEN
+        ALTER TABLE parent_student_link ADD COLUMN can_view_violations BOOLEAN DEFAULT TRUE;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='parent_student_link' AND column_name='can_view_meetings') THEN
+        ALTER TABLE parent_student_link ADD COLUMN can_view_meetings BOOLEAN DEFAULT TRUE;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='parent_student_link' AND column_name='can_view_progress') THEN
+        ALTER TABLE parent_student_link ADD COLUMN can_view_progress BOOLEAN DEFAULT TRUE;
+    END IF;
+END $$;
 
--- ========================================
--- 2. جدول الصفوف (تاسع - ثاني ثانوي)
--- ========================================
-CREATE TABLE grades (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    level INT,
-    academic_year VARCHAR(50),
-    notes TEXT,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- إضافة حقل user_type لجدول activity_log
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='activity_log' AND column_name='user_type') THEN
+        ALTER TABLE activity_log ADD COLUMN user_type VARCHAR(50) DEFAULT 'user';
+    END IF;
+END $$;
 
-INSERT INTO grades (name, level, academic_year, is_active) VALUES
-('التاسع', 9, '2024-2025', TRUE),
-('العاشر', 10, '2024-2025', TRUE),
-('الحادي عشر', 11, '2024-2025', TRUE),
-('الثاني عشر', 12, '2024-2025', TRUE);
+-- إضافة حقول لجدول notifications
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='notifications' AND column_name='user_type') THEN
+        ALTER TABLE notifications ADD COLUMN user_type VARCHAR(50) DEFAULT 'user';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='notifications' AND column_name='action_required') THEN
+        ALTER TABLE notifications ADD COLUMN action_required BOOLEAN DEFAULT FALSE;
+    END IF;
+END $$;
 
--- ========================================
--- 3. جدول الشعب (أ - ح)
--- ========================================
-CREATE TABLE sections (
-    id SERIAL PRIMARY KEY,
-    grade_id INT REFERENCES grades(id) ON DELETE CASCADE,
-    name VARCHAR(50) NOT NULL,
-    capacity INT DEFAULT 30,
-    current_count INT DEFAULT 0,
-    classroom VARCHAR(100),
-    class_teacher_id INT REFERENCES users(id) ON DELETE SET NULL,
-    notes TEXT,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-INSERT INTO sections (grade_id, name, capacity, classroom) VALUES
--- التاسع
-(1, 'أ', 35, 'غرفة 101'), (1, 'ب', 35, 'غرفة 102'), (1, 'ج', 35, 'غرفة 103'),
-(1, 'د', 35, 'غرفة 104'), (1, 'ه', 35, 'غرفة 105'), (1, 'و', 35, 'غرفة 106'),
-(1, 'ز', 35, 'غرفة 107'), (1, 'ح', 35, 'غرفة 108'),
--- العاشر
-(2, 'أ', 35, 'غرفة 201'), (2, 'ب', 35, 'غرفة 202'), (2, 'ج', 35, 'غرفة 203'),
-(2, 'د', 35, 'غرفة 204'), (2, 'ه', 35, 'غرفة 205'), (2, 'و', 35, 'غرفة 206'),
-(2, 'ز', 35, 'غرفة 207'), (2, 'ح', 35, 'غرفة 208'),
--- الحادي عشر
-(3, 'أ', 35, 'غرفة 301'), (3, 'ب', 35, 'غرفة 302'), (3, 'ج', 35, 'غرفة 303'),
-(3, 'د', 35, 'غرفة 304'), (3, 'ه', 35, 'غرفة 305'), (3, 'و', 35, 'غرفة 306'),
-(3, 'ز', 35, 'غرفة 307'), (3, 'ح', 35, 'غرفة 308'),
--- الثاني عشر
-(4, 'أ', 35, 'غرفة 401'), (4, 'ب', 35, 'غرفة 402'), (4, 'ج', 35, 'غرفة 403'),
-(4, 'د', 35, 'غرفة 404'), (4, 'ه', 35, 'غرفة 405'), (4, 'و', 35, 'غرفة 406'),
-(4, 'ز', 35, 'غرفة 407'), (4, 'ح', 35, 'غرفة 408');
+-- إضافة حقول لجدول parent_meetings
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='parent_meetings' AND column_name='attendance_confirmed') THEN
+        ALTER TABLE parent_meetings ADD COLUMN attendance_confirmed BOOLEAN DEFAULT FALSE;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='parent_meetings' AND column_name='confirmed_at') THEN
+        ALTER TABLE parent_meetings ADD COLUMN confirmed_at TIMESTAMP;
+    END IF;
+END $$;
 
 -- ========================================
--- 4. جدول الطلاب
+-- الخطوة 3: إنشاء الجداول الجديدة
 -- ========================================
-CREATE TABLE students (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    national_id VARCHAR(20) UNIQUE,
-    email VARCHAR(255),
-    phone VARCHAR(50),
-    birth_date DATE,
-    gender VARCHAR(10),
-    grade_id INT REFERENCES grades(id) ON DELETE SET NULL,
-    section_id INT REFERENCES sections(id) ON DELETE SET NULL,
-    grade VARCHAR(255),
-    section VARCHAR(50),
-    address TEXT,
-    photo_url TEXT,
-    enrollment_date DATE DEFAULT CURRENT_DATE,
-    status VARCHAR(50) DEFAULT 'active',
-    guardian VARCHAR(255),
-    guardian_email VARCHAR(255),
-    guardian_phone VARCHAR(50),
-    guardian_relation VARCHAR(50),
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
 
--- ========================================
--- 5. جدول المعلمين
--- ========================================
-CREATE TABLE teachers (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id) ON DELETE SET NULL,
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE,
-    phone VARCHAR(50),
-    subject VARCHAR(255),
-    specialization VARCHAR(255),
-    hire_date DATE,
-    is_active BOOLEAN DEFAULT TRUE,
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-INSERT INTO teachers (name, email, subject, phone) VALUES
-('أحمد محمد', 'ahmad.teacher@school.com', 'رياضيات', '0791234567'),
-('سارة علي', 'sara.teacher@school.com', 'لغة عربية', '0797654321'),
-('محمد خالد', 'mohammed.teacher@school.com', 'علوم', '0791234568'),
-('فاطمة حسن', 'fatima.teacher@school.com', 'إنجليزي', '0797654322');
-
--- ========================================
--- 6. جدول أولياء الأمور
--- ========================================
-CREATE TABLE parents (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(100) UNIQUE,
-    password_hash VARCHAR(255),
-    full_name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    phone VARCHAR(50),
-    national_id VARCHAR(20),
-    relation VARCHAR(50),
-    is_active BOOLEAN DEFAULT TRUE,
-    last_login TIMESTAMP,
-    two_factor_enabled BOOLEAN DEFAULT FALSE,
-    two_factor_secret VARCHAR(255),
-    backup_codes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ========================================
--- 7. جدول ربط أولياء الأمور بالطلاب
--- ========================================
-CREATE TABLE parent_student_link (
-    id SERIAL PRIMARY KEY,
-    parent_id INT REFERENCES parents(id) ON DELETE CASCADE,
-    student_id INT REFERENCES students(id) ON DELETE CASCADE,
-    relation VARCHAR(50),
-    is_primary BOOLEAN DEFAULT TRUE,
-    can_view_violations BOOLEAN DEFAULT TRUE,
-    can_view_meetings BOOLEAN DEFAULT TRUE,
-    can_view_progress BOOLEAN DEFAULT TRUE,
-    can_view_attendance BOOLEAN DEFAULT TRUE,
-    can_view_grades BOOLEAN DEFAULT TRUE,
-    can_chat_teachers BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(parent_id, student_id)
-);
-
--- ========================================
--- 8. جدول المخالفات
--- ========================================
-CREATE TABLE violations (
-    id SERIAL PRIMARY KEY,
-    student_id INT REFERENCES students(id) ON DELETE CASCADE,
-    student_name VARCHAR(255) NOT NULL,
-    date DATE NOT NULL,
-    type VARCHAR(255) NOT NULL,
-    severity VARCHAR(50) DEFAULT 'medium',
-    description TEXT NOT NULL,
-    action_taken TEXT,
-    status VARCHAR(50) DEFAULT 'pending',
-    reported_by INT REFERENCES users(id) ON DELETE SET NULL,
-    reporter_email VARCHAR(255),
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ========================================
--- 9. جدول جلسات التوجيه الجمعي
--- ========================================
-CREATE TABLE guidance_sessions (
-    id SERIAL PRIMARY KEY,
-    topic VARCHAR(255) NOT NULL,
-    date DATE,
-    grade VARCHAR(255),
-    section VARCHAR(50),
-    duration INT,
-    location VARCHAR(255),
-    presenter_id INT REFERENCES users(id) ON DELETE SET NULL,
-    notes TEXT,
-    attendees_count INT DEFAULT 0,
-    materials TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ========================================
--- 10. جدول الاجتماعات
--- ========================================
-CREATE TABLE meetings (
-    id SERIAL PRIMARY KEY,
-    meeting_number VARCHAR(100),
-    title VARCHAR(255),
-    date DATE,
-    start_time TIME,
-    end_time TIME,
-    location VARCHAR(255),
-    attendees_count INT DEFAULT 0,
-    topics TEXT,
-    decisions TEXT,
-    organizer_id INT REFERENCES users(id) ON DELETE SET NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ========================================
--- 11. جدول مقابلات أولياء الأمور
--- ========================================
-CREATE TABLE parent_meetings (
-    id SERIAL PRIMARY KEY,
-    student_id INT REFERENCES students(id) ON DELETE CASCADE,
-    student_name VARCHAR(255) NOT NULL,
-    parent_name VARCHAR(255),
-    parent_email VARCHAR(255),
-    parent_phone VARCHAR(50),
-    date DATE,
-    time TIME,
-    topic TEXT,
-    notes TEXT,
-    status VARCHAR(50) DEFAULT 'scheduled',
-    counselor_id INT REFERENCES users(id) ON DELETE SET NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ========================================
--- 12. جدول الحضور والغياب
--- ========================================
-CREATE TABLE attendance (
-    id SERIAL PRIMARY KEY,
-    student_id INT REFERENCES students(id) ON DELETE CASCADE,
-    student_name VARCHAR(255) NOT NULL,
-    grade_id INT REFERENCES grades(id) ON DELETE SET NULL,
-    section_id INT REFERENCES sections(id) ON DELETE SET NULL,
-    date DATE NOT NULL,
-    status VARCHAR(50) NOT NULL DEFAULT 'present',
-    notes TEXT,
-    recorded_by INT REFERENCES users(id) ON DELETE SET NULL,
-    parent_notified BOOLEAN DEFAULT FALSE,
-    notification_sent_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(student_id, date)
-);
-
--- ========================================
--- 13. جدول الدرجات الأكاديمية
--- ========================================
-CREATE TABLE academic_grades (
-    id SERIAL PRIMARY KEY,
-    student_id INT REFERENCES students(id) ON DELETE CASCADE,
-    student_name VARCHAR(255) NOT NULL,
-    grade_id INT REFERENCES grades(id) ON DELETE SET NULL,
-    section_id INT REFERENCES sections(id) ON DELETE SET NULL,
-    academic_year VARCHAR(50) NOT NULL,
-    semester VARCHAR(50) NOT NULL,
-    subject VARCHAR(255) NOT NULL,
-    exam_type VARCHAR(100),
-    total_marks DECIMAL(5,2),
-    obtained_marks DECIMAL(5,2),
-    percentage DECIMAL(5,2),
-    grade VARCHAR(10),
-    rank_in_class INT,
-    teacher_id INT REFERENCES teachers(id) ON DELETE SET NULL,
-    notes TEXT,
-    recorded_by INT REFERENCES users(id) ON DELETE SET NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ========================================
--- 14. جدول التقويم المدرسي
--- ========================================
-CREATE TABLE school_calendar (
-    id SERIAL PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    event_type VARCHAR(100) NOT NULL,
-    start_date DATE NOT NULL,
-    end_date DATE,
-    start_time TIME,
-    end_time TIME,
-    location VARCHAR(255),
-    target_grades TEXT,
-    target_sections TEXT,
-    is_public BOOLEAN DEFAULT TRUE,
-    color VARCHAR(50),
-    reminder_enabled BOOLEAN DEFAULT TRUE,
-    reminder_days INT DEFAULT 1,
-    created_by INT REFERENCES users(id) ON DELETE SET NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-INSERT INTO school_calendar (title, description, event_type, start_date, is_public, color) VALUES
-('بداية الفصل الدراسي', 'انطلاق العام الدراسي الجديد', 'academic', '2024-09-01', TRUE, '#10b981'),
-('امتحانات نصف الفصل', 'امتحانات منتصف الفصل', 'exam', '2024-10-15', TRUE, '#f59e0b'),
-('عطلة نصف العام', 'عطلة نصف السنة', 'holiday', '2025-01-20', TRUE, '#ef4444');
-
--- ========================================
--- 15. جدول الشكاوى والاقتراحات
--- ========================================
-CREATE TABLE complaints_suggestions (
-    id SERIAL PRIMARY KEY,
-    type VARCHAR(50) NOT NULL,
-    category VARCHAR(100),
-    title VARCHAR(255) NOT NULL,
-    description TEXT NOT NULL,
-    priority VARCHAR(50) DEFAULT 'medium',
-    status VARCHAR(50) DEFAULT 'pending',
-    submitted_by_type VARCHAR(50) NOT NULL,
-    submitted_by_id INT,
-    submitted_by_name VARCHAR(255),
-    submitted_by_email VARCHAR(255),
-    submitted_by_phone VARCHAR(50),
-    is_anonymous BOOLEAN DEFAULT FALSE,
-    assigned_to INT REFERENCES users(id) ON DELETE SET NULL,
-    response TEXT,
-    response_date TIMESTAMP,
-    resolved_by INT REFERENCES users(id) ON DELETE SET NULL,
-    resolved_at TIMESTAMP,
-    attachments TEXT,
-    satisfaction_rating INT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ========================================
--- 16. نظام الشات - المحادثات
--- ========================================
+-- جدول المحادثات
 CREATE TABLE conversations (
     id SERIAL PRIMARY KEY,
-    teacher_id INT REFERENCES teachers(id) ON DELETE CASCADE,
-    parent_id INT REFERENCES parents(id) ON DELETE CASCADE,
-    student_id INT REFERENCES students(id) ON DELETE CASCADE,
-    subject VARCHAR(255),
-    conversation_type VARCHAR(50) DEFAULT 'student_specific',
-    status VARCHAR(50) DEFAULT 'active',
-    last_message_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    title VARCHAR(255),
+    conversation_type VARCHAR(50) DEFAULT 'private',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- إنشاء فهرس فريد يدعم المحادثات بدون طالب محدد
-CREATE UNIQUE INDEX idx_conversations_unique 
-ON conversations (teacher_id, parent_id, COALESCE(student_id, 0));
-
--- ========================================
--- 17. نظام الشات - الرسائل
--- ========================================
-CREATE TABLE chat_messages (
+-- جدول المشاركين في المحادثات
+CREATE TABLE conversation_participants (
     id SERIAL PRIMARY KEY,
     conversation_id INT REFERENCES conversations(id) ON DELETE CASCADE,
-    sender_type VARCHAR(50) NOT NULL,
+    user_id INT NOT NULL,
+    user_type VARCHAR(50) DEFAULT 'user',
+    participant_role VARCHAR(50) DEFAULT 'participant',
+    is_active BOOLEAN DEFAULT TRUE,
+    last_read_at TIMESTAMP,
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(conversation_id, user_id, user_type)
+);
+
+-- جدول الرسائل
+CREATE TABLE messages (
+    id SERIAL PRIMARY KEY,
+    conversation_id INT REFERENCES conversations(id) ON DELETE CASCADE,
     sender_id INT NOT NULL,
-    sender_name VARCHAR(255) NOT NULL,
+    sender_type VARCHAR(50) DEFAULT 'user',
+    sender_name VARCHAR(255),
     message TEXT NOT NULL,
+    message_type VARCHAR(50) DEFAULT 'text',
     is_read BOOLEAN DEFAULT FALSE,
     read_at TIMESTAMP,
-    attachment_url TEXT,
-    attachment_name VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- ========================================
--- 18. إشعارات الطوارئ
--- ========================================
-CREATE TABLE emergency_notifications (
-    id SERIAL PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    message TEXT NOT NULL,
-    priority VARCHAR(50) DEFAULT 'high',
-    target_type VARCHAR(100) NOT NULL,
-    target_grades TEXT,
-    target_sections TEXT,
-    notification_methods TEXT,
-    email_sent BOOLEAN DEFAULT FALSE,
-    sms_sent BOOLEAN DEFAULT FALSE,
-    recipients_count INT DEFAULT 0,
-    sent_by INT REFERENCES users(id) ON DELETE SET NULL,
-    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ========================================
--- 19. نظام متعدد اللغات
--- ========================================
-CREATE TABLE translations (
-    id SERIAL PRIMARY KEY,
-    key VARCHAR(255) NOT NULL,
-    language VARCHAR(10) NOT NULL,
-    value TEXT NOT NULL,
-    category VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(key, language)
-);
-
-INSERT INTO translations (key, language, value, category) VALUES
-('welcome_message', 'ar', 'مرحباً بكم في نظام الإرشاد المدرسي', 'general'),
-('welcome_message', 'en', 'Welcome to School Guidance System', 'general'),
-('dashboard', 'ar', 'لوحة التحكم', 'navigation'),
-('dashboard', 'en', 'Dashboard', 'navigation');
-
--- ========================================
--- 20. تفضيلات المستخدمين
--- ========================================
-CREATE TABLE user_preferences (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id) ON DELETE CASCADE,
-    theme VARCHAR(50) DEFAULT 'light',
-    language VARCHAR(10) DEFAULT 'ar',
-    notification_preferences TEXT,
-    dashboard_layout TEXT,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id)
-);
-
-CREATE TABLE parent_preferences (
+-- جدول طلبات المواعيد
+CREATE TABLE meeting_requests (
     id SERIAL PRIMARY KEY,
     parent_id INT REFERENCES parents(id) ON DELETE CASCADE,
-    theme VARCHAR(50) DEFAULT 'light',
-    language VARCHAR(10) DEFAULT 'ar',
-    notification_preferences TEXT,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(parent_id)
+    student_id INT REFERENCES students(id) ON DELETE CASCADE,
+    requested_date DATE,
+    requested_time TIME,
+    topic TEXT,
+    reason TEXT,
+    request_status VARCHAR(50) DEFAULT 'pending',
+    response_message TEXT,
+    responded_by INT REFERENCES users(id) ON DELETE SET NULL,
+    responded_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- ========================================
--- 21. جدول الإشعارات الداخلية
--- ========================================
-CREATE TABLE notifications (
+-- جدول قوالب الرسائل
+CREATE TABLE message_templates (
     id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id) ON DELETE CASCADE,
-    type VARCHAR(100) NOT NULL,
+    category VARCHAR(100),
     title VARCHAR(255) NOT NULL,
-    message TEXT NOT NULL,
-    link TEXT,
-    icon VARCHAR(100),
-    is_read BOOLEAN DEFAULT FALSE,
-    read_at TIMESTAMP,
-    priority VARCHAR(50) DEFAULT 'normal',
+    content TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by INT REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- ========================================
--- 22. جدول إشعارات البريد الإلكتروني
--- ========================================
-CREATE TABLE email_notifications (
+-- جدول حضور جلسات التوجيه
+CREATE TABLE guidance_attendance (
     id SERIAL PRIMARY KEY,
-    student_id INT REFERENCES students(id) ON DELETE SET NULL,
-    recipient_email VARCHAR(255) NOT NULL,
-    recipient_name VARCHAR(255),
-    notification_type VARCHAR(100) NOT NULL,
-    subject VARCHAR(255) NOT NULL,
-    message TEXT NOT NULL,
-    status VARCHAR(50) DEFAULT 'pending',
-    sent_at TIMESTAMP,
-    error_message TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    session_id INT REFERENCES guidance_sessions(id) ON DELETE CASCADE,
+    student_id INT REFERENCES students(id) ON DELETE CASCADE,
+    attended BOOLEAN DEFAULT TRUE,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(session_id, student_id)
 );
 
 -- ========================================
--- 23. سجل النشاطات
+-- الخطوة 4: إنشاء الفهارس للأداء
 -- ========================================
-CREATE TABLE activity_log (
-    id SERIAL PRIMARY KEY,
-    user_id INT,
-    user_type VARCHAR(50) DEFAULT 'staff',
-    action_type VARCHAR(100) NOT NULL,
-    table_name VARCHAR(100),
-    record_id INT,
-    description TEXT,
-    ip_address VARCHAR(50),
-    user_agent TEXT,
-    changes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+CREATE INDEX idx_conversations_type ON conversations(conversation_type);
+CREATE INDEX idx_conversation_participants_conversation ON conversation_participants(conversation_id);
+CREATE INDEX idx_conversation_participants_user ON conversation_participants(user_id, user_type);
+CREATE INDEX idx_messages_conversation ON messages(conversation_id);
+CREATE INDEX idx_messages_sender ON messages(sender_id, sender_type);
+CREATE INDEX idx_messages_read ON messages(is_read);
+CREATE INDEX idx_meeting_requests_parent ON meeting_requests(parent_id);
+CREATE INDEX idx_meeting_requests_student ON meeting_requests(student_id);
+CREATE INDEX idx_meeting_requests_status ON meeting_requests(request_status);
+CREATE INDEX idx_guidance_attendance_session ON guidance_attendance(session_id);
+CREATE INDEX idx_guidance_attendance_student ON guidance_attendance(student_id);
 
 -- ========================================
--- إنشاء الفهارس للأداء
+-- الخطوة 5: تحديث البيانات الموجودة
 -- ========================================
-CREATE INDEX idx_students_grade_id ON students(grade_id);
-CREATE INDEX idx_students_section_id ON students(section_id);
-CREATE INDEX idx_students_status ON students(status);
-CREATE INDEX idx_violations_student_id ON violations(student_id);
-CREATE INDEX idx_violations_date ON violations(date);
-CREATE INDEX idx_attendance_student ON attendance(student_id);
-CREATE INDEX idx_attendance_date ON attendance(date);
-CREATE INDEX idx_grades_student ON academic_grades(student_id);
-CREATE INDEX idx_calendar_start_date ON school_calendar(start_date);
-CREATE INDEX idx_chat_messages_conversation ON chat_messages(conversation_id);
-CREATE INDEX idx_guidance_date ON guidance_sessions(date);
-CREATE INDEX idx_meetings_date ON meetings(date);
-CREATE INDEX idx_parent_meetings_date ON parent_meetings(date);
-CREATE INDEX idx_parent_meetings_status ON parent_meetings(status);
-CREATE INDEX idx_parent_meetings_student ON parent_meetings(student_id);
-CREATE INDEX idx_conversations_teacher ON conversations(teacher_id);
-CREATE INDEX idx_conversations_parent ON conversations(parent_id);
+UPDATE parent_student_link 
+SET can_view_violations = COALESCE(can_view_violations, TRUE),
+    can_view_meetings = COALESCE(can_view_meetings, TRUE),
+    can_view_progress = COALESCE(can_view_progress, TRUE);
 
 -- ========================================
--- إنشاء الدوال والمحفزات
+-- الخطوة 6: إضافة بيانات تجريبية
 -- ========================================
-
--- دالة تحديث وقت التعديل تلقائياً
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
--- تطبيق المحفز على الجداول
-CREATE TRIGGER update_users_updated_at 
-    BEFORE UPDATE ON users
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_students_updated_at 
-    BEFORE UPDATE ON students
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_violations_updated_at 
-    BEFORE UPDATE ON violations
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_academic_grades_updated_at 
-    BEFORE UPDATE ON academic_grades
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_calendar_updated_at 
-    BEFORE UPDATE ON school_calendar
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_complaints_updated_at 
-    BEFORE UPDATE ON complaints_suggestions
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+INSERT INTO students (name, national_id, email, guardian, guardian_email, guardian_phone, guardian_relation, grade, section, phone, status) 
+VALUES 
+('سارة أحمد', '9998887776', 'sara.student@school.com', 'أحمد محمد', 'sara.student@school.com', '0791112222', 'والد', 'الحادي عشر', 'أ', '0793334444', 'active')
+ON CONFLICT (national_id) DO UPDATE SET guardian_email = EXCLUDED.guardian_email;
 
 -- ========================================
--- ✅ اكتمل إنشاء قاعدة البيانات بنجاح!
+-- ✅ تم الانتهاء بنجاح!
 -- ========================================
-
-SELECT '✅ تم إنشاء قاعدة البيانات الكاملة بنجاح!' AS status,
-       (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public') AS total_tables;
+SELECT '✅ تم إصلاح قاعدة البيانات بنجاح! جميع الجداول والحقول جاهزة.' as status;
