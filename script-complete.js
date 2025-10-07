@@ -845,6 +845,72 @@ async function renderViolationsTable() {
     }
 }
 
+async function updateViolSections() {
+    const gradeSelect = document.getElementById('viol_grade_select');
+    const sectionSelect = document.getElementById('viol_section_select');
+    const studentSelect = document.getElementById('viol_student');
+    
+    const selectedGrade = gradeSelect.value;
+    
+    sectionSelect.innerHTML = '<option value="">اختر الشعبة</option>';
+    studentSelect.innerHTML = '<option value="">اختر الطالب</option>';
+    
+    if (!selectedGrade) return;
+    
+    try {
+        const students = await loadStudentsData();
+        if (!students) return;
+        
+        const sections = [...new Set(students
+            .filter(s => s.grade === selectedGrade)
+            .map(s => s.section)
+            .filter(s => s))];
+        
+        sections.sort();
+        sections.forEach(section => {
+            const option = document.createElement('option');
+            option.value = section;
+            option.textContent = section;
+            sectionSelect.appendChild(option);
+        });
+    } catch (error) {
+        debugLog('Error updating sections:', error);
+    }
+}
+
+async function updateViolStudents() {
+    const gradeSelect = document.getElementById('viol_grade_select');
+    const sectionSelect = document.getElementById('viol_section_select');
+    const studentSelect = document.getElementById('viol_student');
+    
+    const selectedGrade = gradeSelect.value;
+    const selectedSection = sectionSelect.value;
+    
+    studentSelect.innerHTML = '<option value="">اختر الطالب</option>';
+    
+    if (!selectedGrade || !selectedSection) return;
+    
+    try {
+        const students = await loadStudentsData();
+        if (!students) return;
+        
+        const filteredStudents = students.filter(s => 
+            s.grade === selectedGrade && s.section === selectedSection
+        );
+        
+        filteredStudents.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+        
+        filteredStudents.forEach(student => {
+            const option = document.createElement('option');
+            option.value = student.name;
+            option.textContent = student.name;
+            studentSelect.appendChild(option);
+        });
+    } catch (error) {
+        debugLog('Error updating students:', error);
+    }
+}
+
 async function saveViolation() {
     const student_name = document.getElementById('viol_student').value.trim();
     const type = document.getElementById('viol_type').value.trim();
@@ -890,7 +956,17 @@ async function editViolation(id) {
     const violation = violations.find(v => v.id === id);
     
     if (violation) {
-        document.getElementById('viol_student').value = violation.student_name;
+        const students = await loadStudentsData();
+        const student = students ? students.find(s => s.name === violation.student_name) : null;
+        
+        if (student) {
+            document.getElementById('viol_grade_select').value = student.grade;
+            await updateViolSections();
+            document.getElementById('viol_section_select').value = student.section;
+            await updateViolStudents();
+            document.getElementById('viol_student').value = violation.student_name;
+        }
+        
         document.getElementById('viol_type').value = violation.type;
         document.getElementById('viol_date').value = violation.date;
         document.getElementById('viol_desc').value = violation.description;
@@ -915,7 +991,9 @@ async function deleteViolationConfirm(id) {
 }
 
 function clearViolationForm() {
-    document.getElementById('viol_student').value = '';
+    document.getElementById('viol_grade_select').value = '';
+    document.getElementById('viol_section_select').innerHTML = '<option value="">اختر الشعبة</option>';
+    document.getElementById('viol_student').innerHTML = '<option value="">اختر الطالب</option>';
     document.getElementById('viol_type').value = '';
     document.getElementById('viol_date').value = '';
     document.getElementById('viol_desc').value = '';
