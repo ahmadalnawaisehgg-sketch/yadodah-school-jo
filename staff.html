@@ -394,10 +394,30 @@
     <div class="card-panel">
       <h5>إضافة / تعديل مخالفة</h5>
       <div class="row g-2 align-items-end">
-        <div class="col-md-5">
-          <label>اختر طالب (ابدأ بالكتابة)</label>
-          <input id="viol_student" list="studentsDatalist" class="form-control" placeholder="الاسم">
-          <datalist id="studentsDatalist"></datalist>
+        <div class="col-md-2">
+          <label>الصف</label>
+          <select id="viol_grade_select" class="form-select" onchange="updateViolSections()">
+            <option value="">اختر الصف</option>
+            <option>الحادي عشر الأكاديمي</option>
+            <option>الثاني عشر الأكاديمي</option>
+            <option>الحادي عشر صحي</option>
+            <option>الثاني عشر صحي</option>
+            <option>الحادي عشر علوم وتكنولوجيا</option>
+            <option>الثاني عشر علوم وتكنولوجيا</option>
+            <option>الثاني عشر القانون والعلوم الشرعية واللغات</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label>الشعبة</label>
+          <select id="viol_section_select" class="form-select" onchange="updateViolStudents()">
+            <option value="">اختر الشعبة</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label>الطالب</label>
+          <select id="viol_student" class="form-select">
+            <option value="">اختر الطالب</option>
+          </select>
         </div>
         <div class="col-md-3">
           <label>نوع المخالفة</label>
